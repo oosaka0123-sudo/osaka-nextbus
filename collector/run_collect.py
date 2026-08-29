@@ -13,7 +13,11 @@ Bus-Vision公開HTMLからの時刻表収集のエントリポイント(許可�
   2. config.py の BASE_URL / DIAGRAM_DETAIL_PATH_TEMPLATE / DATE_DIV_CD /
      STOP_CODE_SOURCE_NOTE を、実際に確認した値で埋める(推測で埋めない)。
   3. robots.txt・利用規約を確認する(http_client.check_robots_txt を使う)。
-  4. parser.py の parse_diagram_detail() を実際のHTML構造に合わせて実装する。
+  4. 実際の diagramDetail.html を目視確認し、
+     collector/bus_vision/selectors.py の SelectorConfig を実際のDOM構造
+     (タグ名・class名)に合わせて組み立てる。解析アルゴリズム自体
+     (collector/bus_vision/parser.py)は実装・テスト済みのため、
+     基本的にはコード変更ではなく SelectorConfig の値を用意するだけでよい。
   5. このスクリプトの収集ループ本体(下記 TODO)を実装し、低速収集を実行する。
   6. collector/convert_to_timetable_csv.py で収集結果を timetable.csv に変換する。
   7. scripts/timetable-csv-to-json.mjs で data/timetable.json に変換する。
@@ -32,13 +36,14 @@ def main() -> int:
         print(f"収集を開始できません: {e}", file=sys.stderr)
         return 1
 
-    # 許可が下りた後、ここに checkpoint.py / http_client.py / parser.py を
-    # 組み合わせた実際の収集ループを実装すること。
-    # BASE_URL・DIAGRAM_DETAIL_PATH_TEMPLATE・dateDivCd・停留所コード取得方法が
-    # いずれも未確定のため、現時点ではあえて未実装のままにしてある。
+    # 許可が下りた後、ここに checkpoint.py / http_client.py /
+    # bus_vision.parser を組み合わせた実際の収集ループを実装すること。
+    # BASE_URL・DIAGRAM_DETAIL_PATH_TEMPLATE・dateDivCd・停留所コード取得方法・
+    # SelectorConfig(実HTML構造)がいずれも未確定のため、
+    # 現時点ではあえて未実装のままにしてある。
     raise NotImplementedError(
         "収集ループは許可後に実装してください"
-        "(BASE_URL / dateDivCd / diagramDetail.htmlの構造が未確定のため)。"
+        "(BASE_URL / dateDivCd / SelectorConfigが未確定のため)。"
     )
 
 

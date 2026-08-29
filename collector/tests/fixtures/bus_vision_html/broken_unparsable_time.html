@@ -1,0 +1,17 @@
+<!--
+  合成テストフィクスチャ: 時刻セルに時刻として解釈できない文字列が入っている。
+  推測で補完せずParseErrorで安全停止することを確認するためのもの。
+-->
+<html>
+<body>
+  <div class="stop-name">テスト停留所1</div>
+  <div class="route-block">
+    <span class="line-no">27号</span>
+    <span class="destination">なんば行</span>
+    <ul class="times">
+      <li class="time-cell">06:00発</li>
+      <li class="time-cell">運休</li>
+    </ul>
+  </div>
+</body>
+</html>
