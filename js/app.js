@@ -239,5 +239,15 @@
         /* SW登録に失敗してもアプリ自体は動作可能なため無視 */
       });
     });
+
+    // 新しいバージョンの Service Worker が有効化されたら、
+    // 開いたままのタブにも即座に最新のコードを反映するため1回だけ再読み込みする。
+    // (これがないと、旧バージョンをキャッシュ済みのタブは手動リロードしないと更新されない)
+    let hasReloadedForNewWorker = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (hasReloadedForNewWorker) return;
+      hasReloadedForNewWorker = true;
+      window.location.reload();
+    });
   }
 })();
