@@ -4,11 +4,11 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
 <title>大阪シティバス 次のバス</title>
-<meta name="description" content="いつものバス停の次のバスを3秒で確認できるシンプルなPWA(デモ版・仮データ)" />
+<meta name="description" content="いつものバス停の次のバスを3秒で確認できるシンプルなPWA。停留所データは大阪シティバスの実データ、時刻表は準備中です。" />
 <meta name="theme-color" content="#0b57d0" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="次のバス" />
+<meta name="apple-mobile-web-app-title" content="次バス大阪" />
 <link rel="manifest" href="manifest.json" />
 <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png" />
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
@@ -37,7 +37,7 @@
     </label>
   </section>
 
-  <p id="status-message" class="status-message" hidden></p>
+  <p id="status-message" class="status-message" role="status" aria-live="polite" hidden></p>
 
   <main class="board" id="board">
     <p class="board-label">次のバス</p>

@@ -1,7 +1,7 @@
 {
-  "name": "大阪シティバス 次のバス (デモ)",
-  "short_name": "次のバス",
-  "description": "いつものバス停の次のバスを一目で確認できるシンプルなPWA(デモ版・仮データ)",
+  "name": "次バス大阪(大阪シティバス 次のバス)",
+  "short_name": "次バス大阪",
+  "description": "いつものバス停の次のバスを一目で確認できるシンプルなPWA。停留所は大阪シティバスの実データ、時刻表は準備中です。",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

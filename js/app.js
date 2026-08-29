@@ -230,15 +230,26 @@
     locateAndSort();
   }
 
+  let locating = false;
+
+  function setLocatingUi(isLocating) {
+    locating = isLocating;
+    els.locateBtn.disabled = isLocating;
+    els.locateBtn.textContent = isLocating ? "📍 現在地を取得中..." : "📍 現在地から探す";
+  }
+
   function locateAndSort() {
+    if (locating) return; // 二重タップで getCurrentPosition が重複実行されるのを防ぐ
     if (!("geolocation" in navigator)) {
-      showStatus("この端末では現在地を利用できません");
+      showStatus("この端末では現在地を利用できません。バス停は手動で選択してください");
       return;
     }
-    showStatus("現在地を取得中...");
+    setLocatingUi(true);
+    showStatus("現在地を取得しています…GPSの電波が届く場所でお待ちください");
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        setLocatingUi(false);
         const position = { lat: pos.coords.latitude, lon: pos.coords.longitude };
         // Haversine式で全停留所との距離を計算し、近い順に6件を表示する
         currentStops = dataSource.getStopsSortedByDistance(position).slice(0, NEARBY_DISPLAY_COUNT);
@@ -247,15 +258,18 @@
         showStatus(null);
       },
       (err) => {
-        const message =
-          err.code === err.PERMISSION_DENIED
-            ? "位置情報の利用が許可されていません。バス停は手動で選択してください"
-            : "現在地を取得できませんでした";
+        setLocatingUi(false);
+        let message = "現在地を取得できませんでした。バス停は手動で選択してください";
+        if (err.code === err.PERMISSION_DENIED) {
+          message = "位置情報の利用が許可されていません。端末の設定を確認するか、バス停は手動で選択してください";
+        } else if (err.code === err.TIMEOUT) {
+          message = "現在地の取得に時間がかかっています。電波の良い場所でもう一度お試しください";
+        }
         showStatus(message);
         // 取得に失敗しても、initFromSavedOrDefault が既に表示しているデフォルト一覧
         // (または「現在地から探す」ボタン押下前の現在の選択)はそのまま維持する。
       },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
     );
   }
 

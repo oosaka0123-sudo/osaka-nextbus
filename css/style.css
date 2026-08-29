@@ -109,10 +109,20 @@ body {
   background-position: right 5px top 55%, right 0px top 55%;
   background-size: 6px 6px, 6px 6px;
   background-repeat: no-repeat;
+  /* 停留所名+距離のように長い文字列でも、狭い画面でレイアウトが崩れず省略記号で収まるように */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .selector select:focus {
   outline: none;
+}
+
+/* デフォルトのoutlineを消す代わりに、キーボード操作時にも分かる枠線を親要素に付ける */
+.selector:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(76, 141, 255, 0.35);
 }
 
 .status-message {
@@ -261,6 +271,11 @@ body {
 
 .locate-btn:active {
   background: #1a2740;
+}
+
+.locate-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 @media (min-width: 420px) {
