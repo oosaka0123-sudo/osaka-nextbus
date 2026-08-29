@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>大阪シティバス 次のバス</title>
+<meta name="description" content="いつものバス停の次のバスを3秒で確認できるシンプルなPWA(デモ版・仮データ)" />
+<meta name="theme-color" content="#0b57d0" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="次のバス" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div class="app">
+  <header class="app-header">
+    <h1>大阪シティバス</h1>
+    <span class="demo-badge" title="このアプリは仮のバス停・時刻表データで動作するデモ版です">DEMO</span>
+  </header>
+
+  <section class="selectors">
+    <label class="selector">
+      <span class="selector-icon" aria-hidden="true">🚏</span>
+      <select id="stop-select" aria-label="バス停を選択"></select>
+    </label>
+    <label class="selector">
+      <span class="selector-icon" aria-hidden="true">➡️</span>
+      <select id="direction-select" aria-label="方面を選択"></select>
+    </label>
+  </section>
+
+  <p id="status-message" class="status-message" hidden></p>
+
+  <main class="board" id="board">
+    <p class="board-label">次のバス</p>
+
+    <div class="next-bus" id="next-bus">
+      <p class="next-bus-eta"><span class="prefix">あと</span><span id="eta-0">--</span><span class="unit">分</span></p>
+      <p class="next-bus-time" id="time-0">--:--</p>
+      <p class="next-bus-dest" id="dest-0">-</p>
+    </div>
+
+    <ul class="upcoming" id="upcoming">
+      <li class="upcoming-item">
+        <span class="upcoming-label">次</span>
+        <span class="upcoming-time" id="time-1">--:--</span>
+        <span class="upcoming-eta" id="eta-1">あと --分</span>
+      </li>
+      <li class="upcoming-item">
+        <span class="upcoming-label">その次</span>
+        <span class="upcoming-time" id="time-2">--:--</span>
+        <span class="upcoming-eta" id="eta-2">あと --分</span>
+      </li>
+    </ul>
+  </main>
+
+  <button id="locate-btn" class="locate-btn" type="button">📍 現在地から探す</button>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
