@@ -18,7 +18,7 @@
 <div class="app">
   <header class="app-header">
     <h1>大阪シティバス</h1>
-    <span class="demo-badge" title="このアプリは仮のバス停・時刻表データで動作するデモ版です">DEMO</span>
+    <span id="demo-badge" class="demo-badge" title="このアプリは仮のバス停・時刻表データで動作するデモ版です">DEMO</span>
   </header>
 
   <section class="selectors">
@@ -55,6 +55,11 @@
         <span class="upcoming-eta" id="eta-2">あと --分</span>
       </li>
     </ul>
+
+    <p class="pending-message" id="pending-message" hidden>
+      🚧 時刻表データ準備中<br />
+      <span class="pending-message-sub">この停留所は位置情報のみ実データです。正式な時刻表が利用可能になり次第、次のバス表示に対応します。</span>
+    </p>
   </main>
 
   <button id="locate-btn" class="locate-btn" type="button">📍 現在地から探す</button>

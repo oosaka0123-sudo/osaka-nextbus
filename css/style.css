@@ -143,6 +143,13 @@ body {
   gap: 2px;
 }
 
+/* .next-bus/.upcoming の display:flex は [hidden] の既定 display:none と詳細度が同じため、
+   後勝ちでhidden属性が無効化されてしまう。属性セレクタを組み合わせて確実に上書きする。 */
+.next-bus[hidden],
+.upcoming[hidden] {
+  display: none;
+}
+
 .next-bus-eta {
   margin: 0;
   font-size: 4.4rem;
@@ -213,6 +220,23 @@ body {
 }
 
 .upcoming-eta {
+  color: var(--color-text-dim);
+}
+
+.pending-message {
+  margin: 8px 0 0;
+  padding: 18px 8px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.6;
+}
+
+.pending-message-sub {
+  display: block;
+  margin-top: 8px;
+  font-size: 0.8rem;
+  font-weight: 400;
   color: var(--color-text-dim);
 }
 

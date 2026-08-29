@@ -12,9 +12,13 @@
  *   自動的にフォールバックします(アプリが壊れないようにするため)。
  *
  * 【方面・時刻表】について:
- *   停留所名・緯度経度が実データであっても、行き先(方面)・発車間隔・
- *   時刻表は【現時点ではすべてデモ(仮データ)】です。正式な GTFS-JP 等の
- *   時刻表データが利用可能になった際に差し替えてください。
+ *   正式な方面・時刻表データはまだ存在しない。
+ *   - 実データの停留所(停留所名・緯度経度が data/osaka-citybus-stops.json 由来)は、
+ *     架空の発車時刻を本物のように表示しないよう、方面は「時刻表データ準備中」の
+ *     1件のみとし、次のバス表示欄には準備中メッセージを出す(偽の時刻は一切出さない)。
+ *   - フォールバックのデモ停留所(DEMO_STOPS)は、UI上「DEMO」バッジを表示した上で
+ *     従来どおり創作の方面・時刻表を表示する。
+ *   正式な GTFS-JP 等の時刻表データが利用可能になった際に差し替えること。
  *
  * このファイル (BusDataSource が返すデータの形) だけを差し替えれば、
  * UI 側 (app.js) のコードは変更せずに済むように設計しています。
@@ -165,42 +169,25 @@ function distanceMeters(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-/** メートル数を "480m" や "1.2km" のような表示用文字列に整形する */
+/** メートル数を "480m" のような表示用文字列に整形する(常にメートル表記) */
 function formatDistanceLabel(meters) {
   if (typeof meters !== "number" || Number.isNaN(meters)) return "";
-  if (meters < 1000) return `${Math.round(meters)}m`;
-  return `${(meters / 1000).toFixed(1)}km`;
+  return `${Math.round(meters)}m`;
 }
 
 /**
- * 実データ(停留所名・緯度経度のみ)には方面・時刻表が含まれないため、
- * 停留所ごとに決定論的な(=毎回同じ結果になる)仮の方面を2つ生成する。
- * これは表示上「行き先」を空にしないための最小限のデモ処理であり、
- * 実在の系統・行き先情報ではない。
+ * 実データ(停留所名・緯度経度のみ)には方面・正式時刻表が含まれないため、
+ * 「時刻表データ準備中」であることを示す1つの方面(センチネル)を返す。
+ * pending: true の方面は架空の発車時刻を一切生成しない
+ * (実在しない時刻を本物のように見せないため)。
  */
-function buildPlaceholderDirections(stopId) {
-  let hash = 0;
-  for (let i = 0; i < stopId.length; i++) {
-    hash = (hash * 31 + stopId.charCodeAt(i)) >>> 0;
-  }
-  const intervalA = 8 + (hash % 13); // 8〜20分
-  const intervalB = 8 + ((hash >> 4) % 13);
-  const phaseA = hash % intervalA;
-  const phaseB = (hash >> 8) % intervalB;
+function buildPendingDirection() {
   return [
     {
-      id: "up",
-      label: "①方面(デモ)",
-      destination: "①方面行(デモ)",
-      intervalMin: intervalA,
-      phaseMin: phaseA,
-    },
-    {
-      id: "down",
-      label: "②方面(デモ)",
-      destination: "②方面行(デモ)",
-      intervalMin: intervalB,
-      phaseMin: phaseB,
+      id: "pending",
+      label: "時刻表データ準備中",
+      destination: "時刻表データ準備中",
+      pending: true,
     },
   ];
 }
@@ -248,7 +235,7 @@ async function fetchRealStops() {
       lat,
       lon,
       isRealLocation: true,
-      directions: buildPlaceholderDirections(id),
+      directions: buildPendingDirection(),
     });
   });
 
@@ -316,7 +303,7 @@ const DemoBusDataSource = {
    */
   getNextDepartures(stopId, directionId, fromDate, count) {
     const direction = this.getDirection(stopId, directionId);
-    if (!direction) return [];
+    if (!direction || direction.pending) return []; // 時刻表データ準備中の方面には架空の時刻を生成しない
 
     const { intervalMin, phaseMin } = direction;
     const serviceStartMin = 5 * 60; // 05:00
