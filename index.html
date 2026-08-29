@@ -23,10 +23,13 @@
   <p id="last-updated" class="last-updated">最終更新 --</p>
 
   <section class="selectors">
-    <label class="selector">
-      <span class="selector-icon" aria-hidden="true">🚏</span>
-      <select id="stop-select" aria-label="バス停を選択"></select>
-    </label>
+    <div class="stop-select-group">
+      <p id="nearby-label" class="nearby-label" hidden>📍 近い順</p>
+      <label class="selector">
+        <span class="selector-icon" aria-hidden="true">🚏</span>
+        <select id="stop-select" aria-label="バス停を選択"></select>
+      </label>
+    </div>
     <label class="selector">
       <span class="selector-icon" aria-hidden="true">🔢</span>
       <select id="route-select" aria-label="系統を選択"></select>

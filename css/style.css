@@ -78,6 +78,20 @@ body {
   gap: 8px;
 }
 
+.stop-select-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nearby-label {
+  margin: 0 0 0 4px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  letter-spacing: 0.03em;
+}
+
 .selector {
   display: flex;
   align-items: center;

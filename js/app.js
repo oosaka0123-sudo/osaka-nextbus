@@ -11,11 +11,12 @@
   const dataSource = BusDataSource;
   const STORAGE_KEY = "osaka-nextbus:selection";
   const REFRESH_MS = 15000;
-  const NEARBY_DISPLAY_COUNT = 6; // 現在地取得後、近い順に表示する停留所件数
+  const NEARBY_DISPLAY_COUNT = 10; // 現在地取得後、近い順に表示する停留所件数(11件目以降は表示しない)
 
   const els = {
     demoBadge: document.getElementById("demo-badge"),
     lastUpdated: document.getElementById("last-updated"),
+    nearbyLabel: document.getElementById("nearby-label"),
     stopSelect: document.getElementById("stop-select"),
     routeSelect: document.getElementById("route-select"),
     directionSelect: document.getElementById("direction-select"),
@@ -70,6 +71,15 @@
     } catch (e) {
       /* 保存できなくても致命的ではないので無視 */
     }
+  }
+
+  /**
+   * 「近い順」ラベルは、現在地取得に成功して距離順に絞り込んだ一覧を
+   * 表示している間だけ出す。全停留所一覧(初回の暫定表示・保存済み選択の
+   * 復元・GPS拒否/失敗時)では表示しない。
+   */
+  function setNearbyLabelVisible(visible) {
+    els.nearbyLabel.hidden = !visible;
   }
 
   function showStatus(message) {
@@ -226,6 +236,7 @@
     if (saved && dataSource.getStopById(saved.stopId)) {
       currentStops = sortedByName(dataSource.getStops());
       populateStopSelect(currentStops);
+      setNearbyLabelVisible(false);
       selectedRouteId = saved.routeId;
       selectedDirectionId = saved.directionId;
       selectStop(saved.stopId, { keepRoute: true, keepDirection: true });
@@ -240,6 +251,7 @@
     // 「いつもの停留所」として固定されてしまうため)。
     currentStops = sortedByName(dataSource.getStops());
     populateStopSelect(currentStops);
+    setNearbyLabelVisible(false);
     suppressSave = true;
     selectStop(currentStops[0].id);
     suppressSave = false;
@@ -267,9 +279,10 @@
       (pos) => {
         setLocatingUi(false);
         const position = { lat: pos.coords.latitude, lon: pos.coords.longitude };
-        // Haversine式で全停留所との距離を計算し、近い順に6件を表示する
+        // Haversine式で全停留所との距離を計算し、近い順に10件だけを表示する(11件目以降は表示しない)
         currentStops = dataSource.getStopsSortedByDistance(position).slice(0, NEARBY_DISPLAY_COUNT);
         populateStopSelect(currentStops);
+        setNearbyLabelVisible(true);
         selectStop(currentStops[0].id); // 最寄り停留所を自動選択。以降ユーザーは他の候補を自由に選べる
         showStatus(null);
       },
@@ -282,8 +295,12 @@
           message = "現在地の取得に時間がかかっています。電波の良い場所でもう一度お試しください";
         }
         showStatus(message);
-        // 取得に失敗しても、initFromSavedOrDefault が既に表示しているデフォルト一覧
-        // (または「現在地から探す」ボタン押下前の現在の選択)はそのまま維持する。
+        // GPS拒否・失敗時は距離順に絞り込まず、全停留所から手動で選べるようにする
+        // (既に選択済みの停留所があれば、その選択は維持したまま一覧だけ全件に戻す)。
+        currentStops = sortedByName(dataSource.getStops());
+        populateStopSelect(currentStops);
+        setNearbyLabelVisible(false);
+        if (selectedStopId) els.stopSelect.value = selectedStopId;
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
     );
