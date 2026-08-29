@@ -2,6 +2,8 @@
  * アプリ本体 (UI 制御)
  * データ取得は必ず BusDataSource (data.js) 経由で行い、
  * ここには仮データや実データの詳細を直接書かない。
+ *
+ * 選択の流れ: 停留所 → 系統番号 → 方面・行先 → 次のバス3便・あと○分
  */
 (() => {
   "use strict";
@@ -15,6 +17,7 @@
     demoBadge: document.getElementById("demo-badge"),
     lastUpdated: document.getElementById("last-updated"),
     stopSelect: document.getElementById("stop-select"),
+    routeSelect: document.getElementById("route-select"),
     directionSelect: document.getElementById("direction-select"),
     statusMessage: document.getElementById("status-message"),
     locateBtn: document.getElementById("locate-btn"),
@@ -32,8 +35,10 @@
 
   let currentStops = [];
   let currentRoutes = [];
+  let currentDirections = [];
   let selectedStopId = null;
   let selectedRouteId = null;
+  let selectedDirectionId = null;
   let refreshTimer = null;
 
   function loadSavedSelection() {
@@ -41,16 +46,16 @@
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return null;
       const parsed = JSON.parse(raw);
-      if (parsed && parsed.stopId && parsed.routeId) return parsed;
+      if (parsed && parsed.stopId && parsed.routeId && parsed.directionId) return parsed;
     } catch (e) {
       /* localStorage が使えない/壊れている場合は無視して初期状態を使う */
     }
     return null;
   }
 
-  function saveSelection(stopId, routeId) {
+  function saveSelection(stopId, routeId, directionId) {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ stopId, routeId }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ stopId, routeId, directionId }));
     } catch (e) {
       /* 保存できなくても致命的ではないので無視 */
     }
@@ -103,29 +108,42 @@
     }
   }
 
-  function populateDirectionSelect(routes) {
-    els.directionSelect.innerHTML = "";
+  function populateRouteSelect(routes) {
+    els.routeSelect.innerHTML = "";
     for (const route of routes) {
       const opt = document.createElement("option");
       opt.value = route.id;
       opt.textContent = route.label;
-      els.directionSelect.appendChild(opt);
+      els.routeSelect.appendChild(opt);
     }
     // 系統が1件も無い(ダミーの「時刻表データ準備中」のみ)場合は、選択の余地がなく無効化する
-    els.directionSelect.disabled = routes.length === 1 && routes[0].pending === true;
+    els.routeSelect.disabled = routes.length === 1 && routes[0].pending === true;
+  }
+
+  function populateDirectionSelect(directions) {
+    els.directionSelect.innerHTML = "";
+    for (const d of directions) {
+      const opt = document.createElement("option");
+      opt.value = d.id;
+      opt.textContent = d.direction;
+      els.directionSelect.appendChild(opt);
+    }
+    // 方面が1件も無い(ダミーの「時刻表データ準備中」のみ)場合は、選択の余地がなく無効化する
+    els.directionSelect.disabled = directions.length === 1 && directions[0].pending === true;
   }
 
   function renderBoard() {
     const stop = dataSource.getStopById(selectedStopId);
     if (!stop) return;
-    const route = currentRoutes.find((r) => r.id === selectedRouteId);
-    if (!route) return;
+    const direction = currentDirections.find((d) => d.id === selectedDirectionId);
+    if (!direction) return;
 
     const now = new Date();
-    const departures = dataSource.getNextDepartures(selectedRouteId, now, 3);
+    const departures = dataSource.getNextDepartures(selectedDirectionId, now, 3);
 
     if (departures.length === 0) {
-      // 時刻表データが無い(系統そのものが未整備 or 時刻表未入力): 架空の時刻は表示せず準備中メッセージのみ表示する
+      // 時刻表データが無い(系統/方面が未整備、または該当曜日区分の時刻が未入力):
+      // 架空の時刻は表示せず準備中メッセージのみ表示する
       els.nextBus.hidden = true;
       els.upcoming.hidden = true;
       els.pendingMessage.hidden = false;
@@ -138,7 +156,7 @@
     if (departures[0]) {
       els.eta0.textContent = etaMinutes(departures[0].time, now);
       els.time0.textContent = formatTime(departures[0].time);
-      els.dest0.textContent = route.destination;
+      els.dest0.textContent = direction.destination;
     }
     if (departures[1]) {
       els.time1.textContent = formatTime(departures[1].time);
@@ -155,31 +173,40 @@
     refreshTimer = setInterval(renderBoard, REFRESH_MS);
   }
 
-  function selectStop(stopId, { keepRoute = false } = {}) {
+  function selectDirection(directionId) {
+    selectedDirectionId = directionId;
+    els.directionSelect.value = directionId;
+    saveSelection(selectedStopId, selectedRouteId, selectedDirectionId);
+    renderBoard();
+  }
+
+  function selectRoute(routeId, { keepDirection = false } = {}) {
+    selectedRouteId = routeId;
+    els.routeSelect.value = routeId;
+
+    currentDirections = dataSource.getDirectionsForRoute(routeId);
+    populateDirectionSelect(currentDirections);
+    const savedDirectionValid =
+      keepDirection && currentDirections.some((d) => d.id === selectedDirectionId);
+    selectDirection(savedDirectionValid ? selectedDirectionId : currentDirections[0].id);
+  }
+
+  function selectStop(stopId, { keepRoute = false, keepDirection = false } = {}) {
     const stop = dataSource.getStopById(stopId);
     if (!stop) return;
     selectedStopId = stopId;
     els.stopSelect.value = stopId;
 
     currentRoutes = dataSource.getRoutesForStop(stopId);
-    populateDirectionSelect(currentRoutes);
+    populateRouteSelect(currentRoutes);
     const savedRouteValid = keepRoute && currentRoutes.some((r) => r.id === selectedRouteId);
-    selectedRouteId = savedRouteValid ? selectedRouteId : currentRoutes[0].id;
-    els.directionSelect.value = selectedRouteId;
-
-    saveSelection(selectedStopId, selectedRouteId);
-    renderBoard();
-  }
-
-  function selectRoute(routeId) {
-    selectedRouteId = routeId;
-    saveSelection(selectedStopId, selectedRouteId);
-    renderBoard();
+    const routeId = savedRouteValid ? selectedRouteId : currentRoutes[0].id;
+    selectRoute(routeId, { keepDirection: savedRouteValid && keepDirection });
   }
 
   /**
    * 初回起動(保存済み停留所がない場合)は位置情報の許可を求め、最寄り停留所を自動表示する。
-   * 2回目以降は localStorage に保存された「いつもの停留所・方面」を優先する。
+   * 2回目以降は localStorage に保存された「いつもの停留所・系統・方面」を優先する。
    * (「現在地から探す」ボタンを押した場合のみ、明示的に現在地基準へ切り替える)
    */
   function initFromSavedOrDefault() {
@@ -189,7 +216,8 @@
       currentStops = sortedByName(dataSource.getStops());
       populateStopSelect(currentStops);
       selectedRouteId = saved.routeId;
-      selectStop(saved.stopId, { keepRoute: true });
+      selectedDirectionId = saved.directionId;
+      selectStop(saved.stopId, { keepRoute: true, keepDirection: true });
       return;
     }
 
@@ -232,7 +260,8 @@
   }
 
   els.stopSelect.addEventListener("change", (e) => selectStop(e.target.value));
-  els.directionSelect.addEventListener("change", (e) => selectRoute(e.target.value));
+  els.routeSelect.addEventListener("change", (e) => selectRoute(e.target.value));
+  els.directionSelect.addEventListener("change", (e) => selectDirection(e.target.value));
   els.locateBtn.addEventListener("click", () => locateAndSort());
 
   document.addEventListener("visibilitychange", () => {
@@ -246,7 +275,7 @@
     })
     .then(() => {
       // 実データ(data/*.json)に切り替わったら「DEMO」バッジを外す。
-      // (系統・時刻表が未整備の停留所は、別途「時刻表データ準備中」表示で伝える)
+      // (系統・方面・時刻表が未整備の停留所は、別途「時刻表データ準備中」表示で伝える)
       els.demoBadge.hidden = dataSource.usingRealData === true;
       const metadata = dataSource.getMetadata();
       els.lastUpdated.textContent = `最終更新 ${formatDateLabel(metadata.lastUpdated)}`;
