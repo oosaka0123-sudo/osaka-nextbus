@@ -20,6 +20,13 @@
  *   node scripts/convert-ksj-p11.mjs --inspect --input path/to/P11-xx_27.geojson
  *   → 属性キー一覧と先頭数件のサンプル値が表示される。
  *
+ * 【1.5 事業者名の表記ゆれを確認する(--inspectでキー名を確認した後)】
+ *   node scripts/convert-ksj-p11.mjs --list-operators --input path/to/P11-xx_27.geojson --operator-field "P11_003"
+ *   → 事業者名フィールドに含まれる値を件数の多い順にすべて表示する。
+ *     「大阪シティバス株式会社」「大阪市高速電気軌道株式会社」等、
+ *     表記のゆれ(全角/半角、㈱と株式会社、旧社名など)がないか目視で確認してから
+ *     --operator に渡す値を決めること。
+ *
  * 【2. 事業者名フィールドと停留所名フィールドを指定して変換する】
  *   node scripts/convert-ksj-p11.mjs \
  *     --input path/to/P11-xx_27.geojson \
@@ -29,11 +36,22 @@
  *     --operator "大阪シティバス,大阪市高速電気軌道,Osaka Metro"
  *
  *   --operator はカンマ区切りで複数指定可。事業者名フィールドの値に、
- *   指定した文字列のいずれかが「部分一致」すればそのバス停を採用する。
+ *   指定した文字列のいずれかが「部分一致」すればそのバス停を採用する
+ *   (全角/半角の違いはNFKC正規化してから比較するため、表記ゆれにある程度強い)。
  *
  *   --name-field / --operator-field は【必須】(自動推定はしない)。
  *   実際のキー名によって停留所を誤判定すると誤ったデータが配信されてしまうため、
  *   必ず --inspect で内容を確認したうえで、正しいキー名を明示的に指定すること。
+ *
+ * 大阪シティバスの事業者名として想定される表記ゆれの例:
+ *   "大阪シティバス株式会社" (2018年の民営化後の正式名称)
+ *   "大阪市高速電気軌道株式会社" (Osaka Metro。地下鉄の運営会社で、バス事業を
+ *     大阪シティバスに委託している関係上、データ上の事業者名として
+ *     こちらが使われている可能性がある)
+ *   "大阪市交通局" (2018年の民営化以前の旧名称。データの整備時期によっては
+ *     残っている可能性がある)
+ * --operator にはこれらをカンマ区切りで複数渡し、--list-operators で
+ * 実際の表記を確認してから最終決定すること。
  */
 
 import { readFileSync, writeFileSync } from "node:fs";
@@ -43,6 +61,7 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--inspect") args.inspect = true;
+    else if (a === "--list-operators") args.listOperators = true;
     else if (a === "--input") args.input = argv[++i];
     else if (a === "--output") args.output = argv[++i];
     else if (a === "--name-field") args.nameField = argv[++i];
@@ -50,6 +69,26 @@ function parseArgs(argv) {
     else if (a === "--operator") args.operator = argv[++i].split(",").map((s) => s.trim());
   }
   return args;
+}
+
+/** 全角/半角等の表記ゆれを吸収するため、比較前にNFKC正規化・前後空白除去する */
+function normalizeForMatch(str) {
+  return String(str).normalize("NFKC").trim();
+}
+
+function listOperators(features, operatorField) {
+  const counts = new Map();
+  for (const f of features) {
+    const value = f.properties && f.properties[operatorField];
+    if (value == null || value === "") continue;
+    const key = String(value);
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  console.log(`事業者名フィールド "${operatorField}" に含まれる値(件数の多い順):`);
+  for (const [value, count] of sorted) {
+    console.log(`  ${count}件: "${value}"`);
+  }
 }
 
 function loadFeatures(inputPath) {
@@ -97,7 +136,7 @@ function inspect(features) {
 function main() {
   const args = parseArgs(process.argv.slice(2));
   if (!args.input) {
-    console.error("使い方: node scripts/convert-ksj-p11.mjs --input <geojsonファイル> [--inspect] [--output <出力先>] [--name-field <キー>] [--operator-field <キー>] [--operator <事業者名,...>]");
+    console.error("使い方: node scripts/convert-ksj-p11.mjs --input <geojsonファイル> [--inspect] [--list-operators --operator-field <キー>] [--output <出力先>] [--name-field <キー>] [--operator-field <キー>] [--operator <事業者名,...>]");
     process.exit(1);
   }
 
@@ -105,6 +144,15 @@ function main() {
 
   if (args.inspect) {
     inspect(features);
+    return;
+  }
+
+  if (args.listOperators) {
+    if (!args.operatorField) {
+      console.error("--list-operators には --operator-field の指定が必要です。");
+      process.exit(1);
+    }
+    listOperators(features, args.operatorField);
     return;
   }
 
@@ -135,8 +183,8 @@ function main() {
     if (!name) continue;
 
     if (operatorFilters && operatorField) {
-      const operatorValue = String(props[operatorField] || "");
-      const matched = operatorFilters.some((f) => operatorValue.includes(f));
+      const operatorValue = normalizeForMatch(props[operatorField] || "");
+      const matched = operatorFilters.some((f) => operatorValue.includes(normalizeForMatch(f)));
       if (!matched) {
         skippedByOperator++;
         continue;
