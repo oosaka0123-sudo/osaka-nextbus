@@ -43,6 +43,23 @@
  *   実際のキー名によって停留所を誤判定すると誤ったデータが配信されてしまうため、
  *   必ず --inspect で内容を確認したうえで、正しいキー名を明示的に指定すること。
  *
+ *   出力する停留所には、名前と座標から決定論的に計算した安定IDを付与する
+ *   (配列の並び順に依存しないため、後から --routes-output で生成する
+ *   routes.json との stopId 参照が壊れない)。
+ *
+ * 【3. 系統情報(routes.json)も同時に生成する場合】
+ *   --routes-field <キー> --routes-output <出力先> を追加で指定する。
+ *   指定したフィールドの値を "," 区切りで分割し、(停留所, 系統)ごとに
+ *   1行の routes.json エントリを生成する。KSJ P11 には系統の行き先・方面
+ *   情報は含まれていないため、label/destination には系統番号の文字列を
+ *   そのまま使う(架空の行き先を作らない)。
+ *
+ *   node scripts/convert-ksj-p11.mjs \
+ *     --input path/to/P11-xx_27.geojson \
+ *     --output ../data/stops.json \
+ *     --name-field "P11_001" --operator-field "P11_002" --operator "大阪シティバス" \
+ *     --routes-field "P11_003_01" --routes-output ../data/routes.json
+ *
  * 大阪シティバスの事業者名として想定される表記ゆれの例:
  *   "大阪シティバス株式会社" (2018年の民営化後の正式名称)
  *   "大阪市高速電気軌道株式会社" (Osaka Metro。地下鉄の運営会社で、バス事業を
@@ -55,6 +72,7 @@
  */
 
 import { readFileSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 
 function parseArgs(argv) {
   const args = { operator: [] };
@@ -67,8 +85,28 @@ function parseArgs(argv) {
     else if (a === "--name-field") args.nameField = argv[++i];
     else if (a === "--operator-field") args.operatorField = argv[++i];
     else if (a === "--operator") args.operator = argv[++i].split(",").map((s) => s.trim());
+    else if (a === "--routes-field") args.routesField = argv[++i];
+    else if (a === "--routes-output") args.routesOutput = argv[++i];
   }
   return args;
+}
+
+/** 停留所名+座標から、配列の並び順に依存しない安定したIDを生成する */
+function stableStopId(name, lat, lon) {
+  const base = String(name)
+    .normalize("NFKC")
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .replace(/^-+|-+$/g, "");
+  const hash = createHash("md5").update(`${lat.toFixed(6)},${lon.toFixed(6)}`).digest("hex").slice(0, 6);
+  return `${base || "stop"}-${hash}`;
+}
+
+/** 系統番号を安全にID化する(記号を含みうるため) */
+function slugifyRoute(route) {
+  return String(route)
+    .normalize("NFKC")
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 /** 全角/半角等の表記ゆれを吸収するため、比較前にNFKC正規化・前後空白除去する */
@@ -136,7 +174,7 @@ function inspect(features) {
 function main() {
   const args = parseArgs(process.argv.slice(2));
   if (!args.input) {
-    console.error("使い方: node scripts/convert-ksj-p11.mjs --input <geojsonファイル> [--inspect] [--list-operators --operator-field <キー>] [--output <出力先>] [--name-field <キー>] [--operator-field <キー>] [--operator <事業者名,...>]");
+    console.error("使い方: node scripts/convert-ksj-p11.mjs --input <geojsonファイル> [--inspect] [--list-operators --operator-field <キー>] [--output <出力先>] [--name-field <キー>] [--operator-field <キー>] [--operator <事業者名,...>] [--routes-field <キー> --routes-output <出力先>]");
     process.exit(1);
   }
 
@@ -173,7 +211,9 @@ function main() {
   const operatorFilters = args.operator.length > 0 ? args.operator : null;
 
   const stops = [];
-  const seen = new Set();
+  const routes = [];
+  const seenStops = new Set();
+  const seenRoutes = new Set();
   let skippedByOperator = 0;
   let skippedByGeometry = 0;
 
@@ -197,18 +237,47 @@ function main() {
       continue;
     }
 
-    const key = `${name}@${point.lat.toFixed(5)},${point.lon.toFixed(5)}`;
-    if (seen.has(key)) continue; // 同一停留所・同一系統の重複行を除去
-    seen.add(key);
+    const dedupeKey = `${name}@${point.lat.toFixed(5)},${point.lon.toFixed(5)}`;
+    const stopId = stableStopId(String(name), point.lat, point.lon);
 
-    stops.push({ name: String(name), lat: point.lat, lon: point.lon });
+    if (!seenStops.has(dedupeKey)) {
+      seenStops.add(dedupeKey);
+      stops.push({ id: stopId, name: String(name), lat: point.lat, lon: point.lon });
+    }
+
+    if (args.routesField) {
+      const raw = props[args.routesField];
+      if (raw) {
+        const routeNames = String(raw)
+          .split(",")
+          .map((s) => s.trim())
+          .filter((s) => s !== "");
+        for (const routeName of routeNames) {
+          const routeId = `${stopId}__${slugifyRoute(routeName)}`;
+          if (seenRoutes.has(routeId)) continue;
+          seenRoutes.add(routeId);
+          routes.push({ id: routeId, stopId, label: routeName, destination: routeName });
+        }
+      }
+    }
   }
 
-  console.log(`変換結果: ${stops.length} 件を採用 (事業者不一致で除外: ${skippedByOperator}件, 座標不正で除外: ${skippedByGeometry}件)`);
+  console.log(`変換結果: 停留所 ${stops.length} 件を採用 (事業者不一致で除外: ${skippedByOperator}件, 座標不正で除外: ${skippedByGeometry}件)`);
 
   const outputPath = args.output || "stops.json";
   writeFileSync(outputPath, JSON.stringify(stops, null, 2) + "\n", "utf-8");
   console.log(`書き出し完了: ${outputPath}`);
+
+  if (args.routesField) {
+    if (!args.routesOutput) {
+      console.error("--routes-field を指定する場合は --routes-output も指定してください。");
+      process.exit(1);
+    }
+    console.log(`変換結果: 系統(停留所×系統番号) ${routes.length} 件を採用`);
+    writeFileSync(args.routesOutput, JSON.stringify(routes, null, 2) + "\n", "utf-8");
+    console.log(`書き出し完了: ${args.routesOutput}`);
+    console.log("注意: KSJ P11 には行き先・方面の情報が含まれていないため、label/destination には系統番号をそのまま使用しています。");
+  }
 }
 
 main();
