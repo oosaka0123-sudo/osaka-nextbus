@@ -41,6 +41,16 @@
   let selectedDirectionId = null;
   let refreshTimer = null;
 
+  // 位置情報が確定するまでの「暫定選択」(五十音順の先頭停留所)を
+  // localStorageに保存してしまわないようにするフラグ。
+  // これをtrueのまま保存すると、位置情報の解決前にアプリが再読み込み・再起動
+  // された場合(古いService Workerの入れ替え時の自動リロード等)に、
+  // 本来一時的なだけの暫定選択が「いつもの停留所」として永続化されてしまい、
+  // 以後ずっと距離順ではなく全件五十音順のリストしか表示されなくなる
+  // 不具合が実際に発生したため、明示的なユーザー操作またはGPS解決結果のみを
+  // 保存対象とする。
+  let suppressSave = false;
+
   function loadSavedSelection() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -54,6 +64,7 @@
   }
 
   function saveSelection(stopId, routeId, directionId) {
+    if (suppressSave) return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ stopId, routeId, directionId }));
     } catch (e) {
@@ -224,9 +235,14 @@
     // 保存済みの選択がない = 初回起動。まず全件のデフォルト一覧(五十音順)を即座に
     // 表示しておき(位置情報の許可待ち・取得失敗時にも画面が空のまま止まって
     // 見えないようにするため)、位置情報が取得できた時点で近い順の一覧に差し替える。
+    // この時点の選択はまだ「仮」なので localStorage には保存しない
+    // (保存すると、位置情報解決前にアプリが再起動された場合に暫定選択が
+    // 「いつもの停留所」として固定されてしまうため)。
     currentStops = sortedByName(dataSource.getStops());
     populateStopSelect(currentStops);
+    suppressSave = true;
     selectStop(currentStops[0].id);
+    suppressSave = false;
     locateAndSort();
   }
 
