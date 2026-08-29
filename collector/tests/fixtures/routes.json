@@ -1,0 +1,4 @@
+[
+  { "id": "test-stop-1__27号", "stopId": "test-stop-1", "label": "27号", "destination": "27号" },
+  { "id": "test-stop-2__37号", "stopId": "test-stop-2", "label": "37号", "destination": "37号" }
+]

@@ -85,6 +85,25 @@ nohup python3 -m http.server 8123 >/tmp/http.log 2>&1 &
 - 将来 GTFS-JP / GTFS-RT が利用可能になった場合は、`BusDataSource.init()` 内のデータ取得処理を
   差し替えるだけで移行できる設計を維持すること(UI側 `js/app.js` は変更不要にする)。
 
+## 時刻表収集(collector/、大阪シティバスの許可待ち)
+
+`collector/` に、大阪シティバスからの正式な利用許可を条件とした
+Bus-Vision公開HTML収集の準備コード(Genspark設計を整理・統合したもの)を
+用意している。**上記「出典は合法的に利用可能な公開データのみ」
+「Bus-Vision「い・ま・ど・こ？」のスクレイピングや非公開APIの利用は禁止」
+というルールは、許可が下りるまで引き続き有効。**
+
+- `collector/config.py` の `PERMISSION_GRANTED` は、大阪シティバスから
+  正式な利用許可を得たことを確認できるまで、**必ず `False` のまま**にする。
+  `False` の間は `http_client.py` がネットワークソケットを開く前に
+  必ず例外を送出するため、collector/ 配下のどのコードを実行しても
+  ネットワークアクセスは発生しない(二重の安全策)。
+- 許可が下りていない限り、`PERMISSION_GRANTED` を `True` に変更したり、
+  `run_collect.py` を実装・実行したりしないこと。
+- テストは `collector/tests/` の合成フィクスチャのみを使い、実ネットワーク
+  には一切アクセスしない(`python3 -m unittest discover -s collector/tests -t .`)。
+- 許可後の実装手順・安全設計の詳細は `collector/README.md` を参照。
+
 ## Service Worker のキャッシュ更新
 
 `sw.js` の `index.html` / `js/*.js` / `css/*.css` 等の中身を変更した場合、

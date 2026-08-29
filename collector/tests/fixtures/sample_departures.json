@@ -1,0 +1,52 @@
+[
+  {
+    "stop_name": "テスト停留所1",
+    "departure_time": "06:00",
+    "line_no": "27号",
+    "headsign": "なんば行",
+    "direction": "なんば方面",
+    "service": "1",
+    "source_url": "https://example.invalid/diagramDetail.html?stopCode=TEST1&dateDivCd=1",
+    "fetched_at": "2026-08-29T09:00:00+09:00"
+  },
+  {
+    "stop_name": "テスト停留所1",
+    "departure_time": "06:30",
+    "line_no": "27号",
+    "headsign": "なんば行",
+    "direction": "なんば方面",
+    "service": "1",
+    "source_url": "https://example.invalid/diagramDetail.html?stopCode=TEST1&dateDivCd=1",
+    "fetched_at": "2026-08-29T09:00:01+09:00"
+  },
+  {
+    "stop_name": "テスト停留所1",
+    "departure_time": "24:10",
+    "line_no": "27号",
+    "headsign": "なんば行",
+    "direction": "なんば方面",
+    "service": "1",
+    "source_url": "https://example.invalid/diagramDetail.html?stopCode=TEST1&dateDivCd=1",
+    "fetched_at": "2026-08-29T09:00:02+09:00"
+  },
+  {
+    "stop_name": "テスト停留所1",
+    "departure_time": "07:00",
+    "line_no": "27号",
+    "headsign": "なんば行",
+    "direction": "なんば方面",
+    "service": "2",
+    "source_url": "https://example.invalid/diagramDetail.html?stopCode=TEST1&dateDivCd=2",
+    "fetched_at": "2026-08-29T09:00:03+09:00"
+  },
+  {
+    "stop_name": "テスト停留所2",
+    "departure_time": "08:15",
+    "line_no": "37号",
+    "headsign": "住吉方面行",
+    "direction": "住吉方面",
+    "service": "3",
+    "source_url": "https://example.invalid/diagramDetail.html?stopCode=TEST2&dateDivCd=3",
+    "fetched_at": "2026-08-29T09:00:04+09:00"
+  }
+]

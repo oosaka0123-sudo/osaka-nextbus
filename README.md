@@ -37,6 +37,11 @@
 
 データの形式・更新手順の詳細は [`data/README.md`](data/README.md) を参照してください。
 
+方面・時刻表の収集を省力化するため、大阪シティバスへ利用許可を申請中の
+「Bus-Vision公開HTML収集ツール」の準備コードを [`collector/`](collector/README.md)
+に用意しています。**許可が下りるまではネットワークアクセスを一切行わない**
+安全設計になっており、詳細は `collector/README.md` を参照してください。
+
 ## 主な機能
 
 1. Geolocation API による現在地取得
