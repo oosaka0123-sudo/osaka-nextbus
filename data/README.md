@@ -12,10 +12,15 @@ data/
 └── timetable.json   各系統の発車時刻表(1日分・毎日繰り返し)
 ```
 
-現時点では `stops.json` / `routes.json` / `timetable.json` はすべて空 `[]` で、
-`metadata.json` の `dataSource` も `"demo"` のままです。この状態では、アプリは
-自動的に `js/data.js` 内蔵のデモデータ(停留所6件)で動作し、画面右上に
-「DEMO」バッジが表示されます。
+**現在の状態(2026-08-29時点):**
+`stops.json` は実データ(国土数値情報 P11 2022年度版から抽出した大阪シティバス
+停留所 992件)、`metadata.json` の `dataSource` は `"manual"` です。
+`routes.json` / `timetable.json` はまだ空 `[]` のため、系統・時刻表は
+すべて「🚧 時刻表データ準備中」と表示されます(架空の時刻は一切表示しません)。
+
+`stops.json` が空、または `metadata.json` の `dataSource` が `"demo"` の場合は、
+自動的に `js/data.js` 内蔵のデモデータ(停留所6件)にフォールバックし、
+画面右上に「DEMO」バッジが表示されます。
 
 ## 実データへの切り替え方法(スマホだけでも可能)
 

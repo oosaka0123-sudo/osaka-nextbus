@@ -74,6 +74,14 @@
     return Math.max(0, Math.round((date.getTime() - now.getTime()) / 60000));
   }
 
+  /**
+   * 距離情報が無いフラットな一覧(GPS未取得時や保存済み選択の復元時)は、
+   * 停留所数が多いと探しにくいため、五十音順に並べ替えてから表示する。
+   */
+  function sortedByName(stops) {
+    return [...stops].sort((a, b) => a.name.localeCompare(b.name, "ja"));
+  }
+
   function makeStopOption(stop) {
     const opt = document.createElement("option");
     opt.value = stop.id;
@@ -178,17 +186,17 @@
     const saved = loadSavedSelection();
 
     if (saved && dataSource.getStopById(saved.stopId)) {
-      currentStops = dataSource.getStops();
+      currentStops = sortedByName(dataSource.getStops());
       populateStopSelect(currentStops);
       selectedRouteId = saved.routeId;
       selectStop(saved.stopId, { keepRoute: true });
       return;
     }
 
-    // 保存済みの選択がない = 初回起動。まず全件のデフォルト一覧を即座に表示しておき
-    // (位置情報の許可待ち・取得失敗時にも画面が空のまま止まって見えないようにするため)、
-    // 位置情報が取得できた時点で近い順の一覧に差し替える。
-    currentStops = dataSource.getStops();
+    // 保存済みの選択がない = 初回起動。まず全件のデフォルト一覧(五十音順)を即座に
+    // 表示しておき(位置情報の許可待ち・取得失敗時にも画面が空のまま止まって
+    // 見えないようにするため)、位置情報が取得できた時点で近い順の一覧に差し替える。
+    currentStops = sortedByName(dataSource.getStops());
     populateStopSelect(currentStops);
     selectStop(currentStops[0].id);
     locateAndSort();
