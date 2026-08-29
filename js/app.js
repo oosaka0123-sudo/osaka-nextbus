@@ -9,6 +9,7 @@
   const dataSource = DemoBusDataSource;
   const STORAGE_KEY = "osaka-nextbus:selection";
   const REFRESH_MS = 15000;
+  const NEARBY_RADIUS_M = 1000; // 「現在地から半径1km以内」を優先表示する基準
 
   const els = {
     stopSelect: document.getElementById("stop-select"),
@@ -24,7 +25,7 @@
     eta2: document.getElementById("eta-2"),
   };
 
-  let currentStops = dataSource.getStops();
+  let currentStops = [];
   let selectedStopId = null;
   let selectedDirectionId = null;
   let refreshTimer = null;
@@ -67,13 +68,46 @@
     return Math.max(0, Math.round((date.getTime() - now.getTime()) / 60000));
   }
 
+  function makeStopOption(stop) {
+    const opt = document.createElement("option");
+    opt.value = stop.id;
+    opt.textContent =
+      typeof stop.distance === "number"
+        ? `${stop.name}(${formatDistanceLabel(stop.distance)})`
+        : stop.name;
+    return opt;
+  }
+
+  /**
+   * バス停プルダウンを構築する。距離情報(現在地取得済み)がある場合は、
+   * 「現在地から半径1km以内」を優先グループとして先頭にまとめ、
+   * 各停留所名の横に距離を表示する。距離情報がない場合は通常の一覧のまま表示する。
+   */
   function populateStopSelect(stops) {
     els.stopSelect.innerHTML = "";
-    for (const stop of stops) {
-      const opt = document.createElement("option");
-      opt.value = stop.id;
-      opt.textContent = stop.name;
-      els.stopSelect.appendChild(opt);
+    const hasDistance = stops.length > 0 && typeof stops[0].distance === "number";
+
+    if (!hasDistance) {
+      for (const stop of stops) {
+        els.stopSelect.appendChild(makeStopOption(stop));
+      }
+      return;
+    }
+
+    const nearby = stops.filter((s) => s.distance <= NEARBY_RADIUS_M);
+    const others = stops.filter((s) => s.distance > NEARBY_RADIUS_M);
+
+    if (nearby.length > 0) {
+      const group = document.createElement("optgroup");
+      group.label = `現在地から1km以内`;
+      for (const stop of nearby) group.appendChild(makeStopOption(stop));
+      els.stopSelect.appendChild(group);
+    }
+    if (others.length > 0) {
+      const group = document.createElement("optgroup");
+      group.label = nearby.length > 0 ? "その他の停留所" : "停留所一覧";
+      for (const stop of others) group.appendChild(makeStopOption(stop));
+      els.stopSelect.appendChild(group);
     }
   }
 
@@ -139,6 +173,7 @@
   }
 
   function initFromSavedOrDefault() {
+    currentStops = dataSource.getStops();
     const saved = loadSavedSelection();
     populateStopSelect(currentStops);
 
@@ -188,8 +223,15 @@
     if (document.visibilityState === "visible") renderBoard();
   });
 
-  initFromSavedOrDefault();
-  scheduleRefresh();
+  dataSource
+    .init()
+    .catch(() => {
+      /* 実データの読み込みに失敗してもデモデータで動作継続する */
+    })
+    .then(() => {
+      initFromSavedOrDefault();
+      scheduleRefresh();
+    });
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {

@@ -1,15 +1,26 @@
 /**
  * データ層 (Data Layer)
  * ---------------------------------------------------------
- * ここに定義されているバス停・方面・時刻表データはすべて【デモ用の仮データ】です。
- * 大阪シティバス公式サイトや「い・ま・ど・こ？」等のスクレイピング、
- * 非公開APIの解析・利用は一切行っていません。
+ * 【停留所名・緯度経度】について:
+ *   data/osaka-citybus-stops.json が存在する場合、それを実データ(バス停名・
+ *   緯度経度)として読み込みます。このファイルは国土交通省「国土数値情報
+ *   (バス停留所データ / P11)」等の合法的に利用可能なオープンデータのみを
+ *   出典として生成することを前提としています。
+ *   大阪シティバス公式サイトや「い・ま・ど・こ？」等のスクレイピング、
+ *   非公開APIの解析・利用は一切行っていません。
+ *   ファイルが存在しない/読み込みに失敗した場合は、下記の DEMO_STOPS に
+ *   自動的にフォールバックします(アプリが壊れないようにするため)。
  *
- * 正式な GTFS-JP データ等の利用許可が得られた場合は、
+ * 【方面・時刻表】について:
+ *   停留所名・緯度経度が実データであっても、行き先(方面)・発車間隔・
+ *   時刻表は【現時点ではすべてデモ(仮データ)】です。正式な GTFS-JP 等の
+ *   時刻表データが利用可能になった際に差し替えてください。
+ *
  * このファイル (BusDataSource が返すデータの形) だけを差し替えれば、
  * UI 側 (app.js) のコードは変更せずに済むように設計しています。
  *
  * BusDataSource が満たすべきインターフェース:
+ *   init(): Promise<void>                      // 起動時に一度だけ呼び出す
  *   getStops(): Stop[]
  *   getNextDepartures(stopId, directionId, fromDate, count): Departure[]
  *
@@ -31,6 +42,7 @@
  */
 
 const IS_DEMO_DATA = true;
+const REAL_STOPS_URL = "data/osaka-citybus-stops.json";
 
 /**
  * デモ用バス停データ。
@@ -153,6 +165,96 @@ function distanceMeters(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
+/** メートル数を "480m" や "1.2km" のような表示用文字列に整形する */
+function formatDistanceLabel(meters) {
+  if (typeof meters !== "number" || Number.isNaN(meters)) return "";
+  if (meters < 1000) return `${Math.round(meters)}m`;
+  return `${(meters / 1000).toFixed(1)}km`;
+}
+
+/**
+ * 実データ(停留所名・緯度経度のみ)には方面・時刻表が含まれないため、
+ * 停留所ごとに決定論的な(=毎回同じ結果になる)仮の方面を2つ生成する。
+ * これは表示上「行き先」を空にしないための最小限のデモ処理であり、
+ * 実在の系統・行き先情報ではない。
+ */
+function buildPlaceholderDirections(stopId) {
+  let hash = 0;
+  for (let i = 0; i < stopId.length; i++) {
+    hash = (hash * 31 + stopId.charCodeAt(i)) >>> 0;
+  }
+  const intervalA = 8 + (hash % 13); // 8〜20分
+  const intervalB = 8 + ((hash >> 4) % 13);
+  const phaseA = hash % intervalA;
+  const phaseB = (hash >> 8) % intervalB;
+  return [
+    {
+      id: "up",
+      label: "①方面(デモ)",
+      destination: "①方面行(デモ)",
+      intervalMin: intervalA,
+      phaseMin: phaseA,
+    },
+    {
+      id: "down",
+      label: "②方面(デモ)",
+      destination: "②方面行(デモ)",
+      intervalMin: intervalB,
+      phaseMin: phaseB,
+    },
+  ];
+}
+
+function slugify(name, index) {
+  const base = name
+    .normalize("NFKC")
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .replace(/^-+|-+$/g, "");
+  return `real-${index}-${base || "stop"}`;
+}
+
+/**
+ * data/osaka-citybus-stops.json を読み込み、Stop[] 形式に変換する。
+ * 期待するファイル形式(最小構成): [{ "name": "大国町", "lat": 34.66, "lon": 135.50 }, ...]
+ * 取得・解析に失敗した場合や空配列の場合は null を返す(呼び出し側でデモにフォールバック)。
+ */
+async function fetchRealStops() {
+  let response;
+  try {
+    response = await fetch(REAL_STOPS_URL, { cache: "no-cache" });
+  } catch (e) {
+    return null; // オフライン・ファイル未配置など
+  }
+  if (!response || !response.ok) return null;
+
+  let raw;
+  try {
+    raw = await response.json();
+  } catch (e) {
+    return null;
+  }
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+
+  const stops = [];
+  raw.forEach((entry, index) => {
+    const name = entry && entry.name;
+    const lat = entry && Number(entry.lat);
+    const lon = entry && Number(entry.lon);
+    if (!name || !Number.isFinite(lat) || !Number.isFinite(lon)) return; // 不正レコードはスキップ
+    const id = entry.id || slugify(String(name), index);
+    stops.push({
+      id,
+      name: String(name),
+      lat,
+      lon,
+      isRealLocation: true,
+      directions: buildPlaceholderDirections(id),
+    });
+  });
+
+  return stops.length > 0 ? stops : null;
+}
+
 /**
  * デモデータ用の BusDataSource 実装。
  * 発車時刻は「1日を通じて一定間隔で運行している」という仮定で
@@ -160,13 +262,30 @@ function distanceMeters(lat1, lon1, lat2, lon2) {
  */
 const DemoBusDataSource = {
   isDemo: IS_DEMO_DATA,
+  usingRealStops: false,
+  _activeStops: DEMO_STOPS,
+
+  /**
+   * 起動時に一度だけ呼び出す。実データ(停留所名・緯度経度)があれば読み込み、
+   * なければデモの停留所一覧のまま動作する。
+   */
+  async init() {
+    const realStops = await fetchRealStops();
+    if (realStops) {
+      this._activeStops = realStops;
+      this.usingRealStops = true;
+    } else {
+      this._activeStops = DEMO_STOPS;
+      this.usingRealStops = false;
+    }
+  },
 
   getStops() {
-    return DEMO_STOPS;
+    return this._activeStops;
   },
 
   getStopById(stopId) {
-    return DEMO_STOPS.find((s) => s.id === stopId) || null;
+    return this._activeStops.find((s) => s.id === stopId) || null;
   },
 
   getDirection(stopId, directionId) {
@@ -178,9 +297,10 @@ const DemoBusDataSource = {
   /**
    * 現在地から近い順にバス停を並べた配列を返す。
    * position が null の場合は元の並び順をそのまま返す。
+   * 各バス停には distance(メートル)を付与する。
    */
   getStopsSortedByDistance(position) {
-    const stops = DEMO_STOPS.map((s) => ({ ...s }));
+    const stops = this._activeStops.map((s) => ({ ...s }));
     if (!position) return stops;
     return stops
       .map((s) => ({
