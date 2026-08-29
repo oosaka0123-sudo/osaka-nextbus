@@ -1,121 +1,65 @@
 /**
  * データ層 (Data Layer)
  * ---------------------------------------------------------
- * 【停留所名・緯度経度】について:
- *   data/osaka-citybus-stops.json が存在する場合、それを実データ(バス停名・
- *   緯度経度)として読み込みます。このファイルは国土交通省「国土数値情報
- *   (バス停留所データ / P11)」等の合法的に利用可能なオープンデータのみを
- *   出典として生成することを前提としています。
- *   大阪シティバス公式サイトや「い・ま・ど・こ？」等のスクレイピング、
- *   非公開APIの解析・利用は一切行っていません。
- *   ファイルが存在しない/読み込みに失敗した場合は、下記の DEMO_STOPS に
- *   自動的にフォールバックします(アプリが壊れないようにするため)。
+ * データは4つのJSONファイル(/data 以下)に分離されており、アプリ本体
+ * (js/app.js)のコードを変更せずに差し替え・更新できるように設計している。
  *
- * 【方面・時刻表】について:
- *   正式な方面・時刻表データはまだ存在しない。
- *   - 実データの停留所(停留所名・緯度経度が data/osaka-citybus-stops.json 由来)は、
- *     架空の発車時刻を本物のように表示しないよう、方面は「時刻表データ準備中」の
- *     1件のみとし、次のバス表示欄には準備中メッセージを出す(偽の時刻は一切出さない)。
- *   - フォールバックのデモ停留所(DEMO_STOPS)は、UI上「DEMO」バッジを表示した上で
- *     従来どおり創作の方面・時刻表を表示する。
- *   正式な GTFS-JP 等の時刻表データが利用可能になった際に差し替えること。
+ *   data/metadata.json  … データの出典種別・最終更新日
+ *   data/stops.json     … 停留所(名前・緯度経度)
+ *   data/routes.json    … 各停留所を通る系統・方面
+ *   data/timetable.json … 各系統(route)の発車時刻表(1日分・毎日繰り返し)
  *
- * このファイル (BusDataSource が返すデータの形) だけを差し替えれば、
- * UI 側 (app.js) のコードは変更せずに済むように設計しています。
+ * 【metadata.json の dataSource フィールドについて】
+ *   "demo" の場合(またはファイル自体が存在しない場合)は、常にこのファイル内の
+ *   組み込みデモデータ(DEMO_STOPS / DEMO_ROUTES / DEMO_TIMETABLE)で動作し、
+ *   画面右上に「DEMO」バッジを表示する。
+ *   "manual" 等、"demo" 以外の値が入っており、かつ stops.json に1件以上の
+ *   停留所が入っている場合のみ、/data 以下の実データを使用し、DEMOバッジを消す。
+ *   これにより、実データへの切り替えは
+ *     1. /data/stops.json, routes.json, timetable.json を実データで置き換える
+ *     2. /data/metadata.json の dataSource を "manual" 等に変え、lastUpdated を更新する
+ *     3. commit / push する
+ *   だけで完了し、アプリ本体のコード変更は一切不要。
+ *
+ * 【時刻表データが未整備の系統について】
+ *   ある系統(routeId)の時刻表が timetable.json に存在しない(=空)場合、
+ *   getNextDepartures() は必ず空配列を返す。架空の発車時刻を本物のように
+ *   表示しないためで、UI側はこれを「時刻表データ準備中」として表示する。
+ *   ある停留所に systemsそのものが1件も無い場合も同様に、ダミーの
+ *   pending 系統を1件返すことで同じ「準備中」表示に自然に倒れるようにしている。
+ *
+ * 【将来の GTFS-JP / GTFS-RT への切り替えについて】
+ *   BusDataSource が公開するインターフェース(init/getStops/getRoutesForStop/
+ *   getNextDepartures 等)はデータの取得方法に依存しない形にしてあるため、
+ *   将来 GTFS-JP(静的時刻表)や GTFS-RT(リアルタイム)を正式に利用できる
+ *   ようになった場合は、init() 内のデータ取得処理をGTFSパーサー/APIクライアントに
+ *   差し替えるだけでよく、UI側(app.js)の変更は不要となるように設計している。
  *
  * BusDataSource が満たすべきインターフェース:
- *   init(): Promise<void>                      // 起動時に一度だけ呼び出す
+ *   init(): Promise<void>
+ *   getMetadata(): { dataSource: string, lastUpdated: string }
  *   getStops(): Stop[]
- *   getNextDepartures(stopId, directionId, fromDate, count): Departure[]
+ *   getStopById(stopId): Stop | null
+ *   getStopsSortedByDistance(position): Stop[]   // 各要素に distance(m)付与
+ *   getRoutesForStop(stopId): Route[]
+ *   getNextDepartures(routeId, fromDate, count): Departure[]
  *
- * Stop = {
- *   id: string,
- *   name: string,          // バス停名
- *   lat: number,
- *   lon: number,
- *   directions: Direction[]
- * }
- * Direction = {
- *   id: string,
- *   label: string,         // プルダウン表示用 (例: "なんば方面")
- *   destination: string    // 大きい表示用 (例: "なんば行")
- * }
- * Departure = {
- *   time: Date             // 発車予定時刻
- * }
+ * Stop = { id, name, lat, lon }
+ * Route = { id, stopId, label, destination, pending?: true }
+ * Departure = { time: Date }
  */
 
-const IS_DEMO_DATA = true;
-const REAL_STOPS_URL = "data/osaka-citybus-stops.json";
+const DATA_URLS = {
+  metadata: "data/metadata.json",
+  stops: "data/stops.json",
+  routes: "data/routes.json",
+  timetable: "data/timetable.json",
+};
 
-/**
- * デモ用バス停データ。
- * 大阪シティバスの実際の路線・時刻とは一切関係のない仮データです。
- * 緯度経度は各バス停のおおよその実在位置(公開地図情報)を参考にしていますが、
- * 時刻表(発車間隔)は完全な創作値です。
- */
-const DEMO_STOPS = [
-  {
-    id: "daikokucho",
-    name: "大国町",
-    lat: 34.6596,
-    lon: 135.4991,
-    directions: [
-      { id: "namba", label: "なんば方面", destination: "なんば行", intervalMin: 12, phaseMin: 7 },
-      { id: "tamade", label: "玉出方面", destination: "玉出行", intervalMin: 15, phaseMin: 3 },
-    ],
-  },
-  {
-    id: "tennoji",
-    name: "天王寺駅前",
-    lat: 34.6461,
-    lon: 135.5134,
-    directions: [
-      { id: "abeno", label: "あべの方面", destination: "あべの橋行", intervalMin: 10, phaseMin: 2 },
-      { id: "shitennoji", label: "四天王寺方面", destination: "四天王寺前行", intervalMin: 18, phaseMin: 9 },
-    ],
-  },
-  {
-    id: "osakaeki",
-    name: "大阪駅前",
-    lat: 34.7024,
-    lon: 135.4959,
-    directions: [
-      { id: "umeda", label: "梅田方面", destination: "梅田新道行", intervalMin: 8, phaseMin: 0 },
-      { id: "juso", label: "十三方面", destination: "十三行", intervalMin: 14, phaseMin: 5 },
-    ],
-  },
-  {
-    id: "namba",
-    name: "難波(大阪シティバス)",
-    lat: 34.6659,
-    lon: 135.5013,
-    directions: [
-      { id: "daikokucho2", label: "大国町方面", destination: "大国町経由 住之江公園行", intervalMin: 12, phaseMin: 4 },
-      { id: "nipponbashi", label: "日本橋方面", destination: "日本橋行", intervalMin: 20, phaseMin: 11 },
-    ],
-  },
-  {
-    id: "abenobashi",
-    name: "あべの橋",
-    lat: 34.6465,
-    lon: 135.5145,
-    directions: [
-      { id: "tennoji2", label: "天王寺駅前方面", destination: "天王寺駅前行", intervalMin: 9, phaseMin: 1 },
-      { id: "sumiyoshi", label: "住吉方面", destination: "住吉車庫前行", intervalMin: 16, phaseMin: 6 },
-    ],
-  },
-  {
-    id: "shinsaibashi",
-    name: "心斎橋",
-    lat: 34.6745,
-    lon: 135.5013,
-    directions: [
-      { id: "namba2", label: "なんば方面", destination: "なんば行", intervalMin: 11, phaseMin: 3 },
-      { id: "honmachi", label: "本町方面", destination: "本町行", intervalMin: 13, phaseMin: 8 },
-    ],
-  },
-];
+const DEFAULT_DEMO_METADATA = {
+  dataSource: "demo",
+  lastUpdated: "2026-08-29",
+};
 
 /**
  * 大阪シティバスは日本国内のサービスのため、端末のシステムタイムゾーンに関わらず
@@ -136,8 +80,6 @@ const TokyoTime = {
     for (const p of fmt.formatToParts(date)) {
       if (p.type !== "literal") parts[p.type] = parseInt(p.value, 10);
     }
-    // hour12:false な形式でも24時が"24"ではなく"00"表記になる実装があるため、
-    // 深夜0時付近の丸め誤差は許容範囲(発車間隔計算にのみ使用)とする。
     return parts;
   },
 
@@ -175,110 +117,167 @@ function formatDistanceLabel(meters) {
   return `${Math.round(meters)}m`;
 }
 
-/**
- * 実データ(停留所名・緯度経度のみ)には方面・正式時刻表が含まれないため、
- * 「時刻表データ準備中」であることを示す1つの方面(センチネル)を返す。
- * pending: true の方面は架空の発車時刻を一切生成しない
- * (実在しない時刻を本物のように見せないため)。
- */
-function buildPendingDirection() {
-  return [
-    {
-      id: "pending",
-      label: "時刻表データ準備中",
-      destination: "時刻表データ準備中",
-      pending: true,
-    },
-  ];
+/** "2026-08-29" のような日付文字列を "2026/08/29" 表示用に整形する */
+function formatDateLabel(dateStr) {
+  if (!dateStr || typeof dateStr !== "string") return "不明";
+  return dateStr.replace(/-/g, "/");
 }
 
 function slugify(name, index) {
-  const base = name
+  const base = String(name)
     .normalize("NFKC")
     .replace(/[^\p{L}\p{N}]+/gu, "-")
     .replace(/^-+|-+$/g, "");
-  return `real-${index}-${base || "stop"}`;
+  return `stop-${index}-${base || "stop"}`;
 }
 
 /**
- * data/osaka-citybus-stops.json を読み込み、Stop[] 形式に変換する。
- * 期待するファイル形式(最小構成): [{ "name": "大国町", "lat": 34.66, "lon": 135.50 }, ...]
- * 取得・解析に失敗した場合や空配列の場合は null を返す(呼び出し側でデモにフォールバック)。
+ * サービス運行時間 05:00〜24:00 を intervalMin 間隔・phaseMin オフセットで
+ * 巡回する "HH:MM" の配列を生成する(デモデータの時刻表を作るための補助関数)。
  */
-async function fetchRealStops() {
-  let response;
-  try {
-    response = await fetch(REAL_STOPS_URL, { cache: "no-cache" });
-  } catch (e) {
-    return null; // オフライン・ファイル未配置など
+function generateDailyTimes(intervalMin, phaseMin) {
+  const times = [];
+  const serviceStartMin = 5 * 60;
+  const serviceEndMin = 24 * 60;
+  for (let m = serviceStartMin + (phaseMin % intervalMin); m < serviceEndMin; m += intervalMin) {
+    const h = Math.floor(m / 60);
+    const mm = m % 60;
+    times.push(`${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`);
   }
-  if (!response || !response.ok) return null;
+  return times;
+}
 
-  let raw;
-  try {
-    raw = await response.json();
-  } catch (e) {
-    return null;
+/**
+ * デモ用データ。大阪シティバスの実際の路線・時刻とは一切関係のない創作値。
+ * 緯度経度は各バス停のおおよその実在位置(公開地図情報)を参考にしている。
+ */
+const DEMO_STOPS = [
+  { id: "daikokucho", name: "大国町", lat: 34.6596, lon: 135.4991 },
+  { id: "tennoji", name: "天王寺駅前", lat: 34.6461, lon: 135.5134 },
+  { id: "osakaeki", name: "大阪駅前", lat: 34.7024, lon: 135.4959 },
+  { id: "namba", name: "難波(大阪シティバス)", lat: 34.6659, lon: 135.5013 },
+  { id: "abenobashi", name: "あべの橋", lat: 34.6465, lon: 135.5145 },
+  { id: "shinsaibashi", name: "心斎橋", lat: 34.6745, lon: 135.5013 },
+];
+
+const DEMO_ROUTE_DEFS = [
+  { id: "daikokucho-namba", stopId: "daikokucho", label: "なんば方面", destination: "なんば行", intervalMin: 12, phaseMin: 7 },
+  { id: "daikokucho-tamade", stopId: "daikokucho", label: "玉出方面", destination: "玉出行", intervalMin: 15, phaseMin: 3 },
+  { id: "tennoji-abeno", stopId: "tennoji", label: "あべの方面", destination: "あべの橋行", intervalMin: 10, phaseMin: 2 },
+  { id: "tennoji-shitennoji", stopId: "tennoji", label: "四天王寺方面", destination: "四天王寺前行", intervalMin: 18, phaseMin: 9 },
+  { id: "osakaeki-umeda", stopId: "osakaeki", label: "梅田方面", destination: "梅田新道行", intervalMin: 8, phaseMin: 0 },
+  { id: "osakaeki-juso", stopId: "osakaeki", label: "十三方面", destination: "十三行", intervalMin: 14, phaseMin: 5 },
+  { id: "namba-daikokucho", stopId: "namba", label: "大国町方面", destination: "大国町経由 住之江公園行", intervalMin: 12, phaseMin: 4 },
+  { id: "namba-nipponbashi", stopId: "namba", label: "日本橋方面", destination: "日本橋行", intervalMin: 20, phaseMin: 11 },
+  { id: "abenobashi-tennoji", stopId: "abenobashi", label: "天王寺駅前方面", destination: "天王寺駅前行", intervalMin: 9, phaseMin: 1 },
+  { id: "abenobashi-sumiyoshi", stopId: "abenobashi", label: "住吉方面", destination: "住吉車庫前行", intervalMin: 16, phaseMin: 6 },
+  { id: "shinsaibashi-namba", stopId: "shinsaibashi", label: "なんば方面", destination: "なんば行", intervalMin: 11, phaseMin: 3 },
+  { id: "shinsaibashi-honmachi", stopId: "shinsaibashi", label: "本町方面", destination: "本町行", intervalMin: 13, phaseMin: 8 },
+];
+
+const DEMO_ROUTES = DEMO_ROUTE_DEFS.map(({ intervalMin, phaseMin, ...route }) => route);
+
+const DEMO_TIMETABLE_BY_ROUTE_ID = new Map(
+  DEMO_ROUTE_DEFS.map((r) => [r.id, generateDailyTimes(r.intervalMin, r.phaseMin)])
+);
+
+function groupRoutesByStop(routes) {
+  const map = new Map();
+  for (const route of routes) {
+    if (!route || !route.stopId || !route.id) continue;
+    if (!map.has(route.stopId)) map.set(route.stopId, []);
+    map.get(route.stopId).push({
+      id: route.id,
+      stopId: route.stopId,
+      label: route.label || route.destination || route.id,
+      destination: route.destination || route.label || route.id,
+    });
   }
-  if (!Array.isArray(raw) || raw.length === 0) return null;
+  return map;
+}
 
+function buildTimetableMap(timetableEntries) {
+  const map = new Map();
+  for (const entry of timetableEntries) {
+    if (!entry || !entry.routeId || !Array.isArray(entry.times)) continue;
+    map.set(entry.routeId, entry.times.filter((t) => /^\d{1,2}:\d{2}$/.test(t)));
+  }
+  return map;
+}
+
+function normalizeStops(rawStops) {
   const stops = [];
-  raw.forEach((entry, index) => {
+  rawStops.forEach((entry, index) => {
     const name = entry && entry.name;
     const lat = entry && Number(entry.lat);
     const lon = entry && Number(entry.lon);
     if (!name || !Number.isFinite(lat) || !Number.isFinite(lon)) return; // 不正レコードはスキップ
-    const id = entry.id || slugify(String(name), index);
     stops.push({
-      id,
+      id: entry.id || slugify(name, index),
       name: String(name),
       lat,
       lon,
-      isRealLocation: true,
-      directions: buildPendingDirection(),
     });
   });
-
-  return stops.length > 0 ? stops : null;
+  return stops;
 }
 
-/**
- * デモデータ用の BusDataSource 実装。
- * 発車時刻は「1日を通じて一定間隔で運行している」という仮定で
- * 決定論的に算出しています(サーバー通信なし・完全ローカル計算)。
- */
-const DemoBusDataSource = {
-  isDemo: IS_DEMO_DATA,
-  usingRealStops: false,
-  _activeStops: DEMO_STOPS,
+async function fetchJson(url) {
+  try {
+    const res = await fetch(url, { cache: "no-cache" });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (e) {
+    return null; // オフライン・ファイル未配置・JSON解析失敗など
+  }
+}
 
-  /**
-   * 起動時に一度だけ呼び出す。実データ(停留所名・緯度経度)があれば読み込み、
-   * なければデモの停留所一覧のまま動作する。
-   */
+const BusDataSource = {
+  usingRealData: false,
+  _metadata: DEFAULT_DEMO_METADATA,
+  _stops: DEMO_STOPS,
+  _routesByStopId: groupRoutesByStop(DEMO_ROUTES),
+  _timetableByRouteId: DEMO_TIMETABLE_BY_ROUTE_ID,
+
+  /** 起動時に一度だけ呼び出す。/data 以下の実データを読み込み、条件を満たせば採用する。 */
   async init() {
-    const realStops = await fetchRealStops();
-    if (realStops) {
-      this._activeStops = realStops;
-      this.usingRealStops = true;
+    const [metadata, rawStops, rawRoutes, rawTimetable] = await Promise.all([
+      fetchJson(DATA_URLS.metadata),
+      fetchJson(DATA_URLS.stops),
+      fetchJson(DATA_URLS.routes),
+      fetchJson(DATA_URLS.timetable),
+    ]);
+
+    const stops = Array.isArray(rawStops) ? normalizeStops(rawStops) : [];
+    const declaresReal =
+      !!metadata && typeof metadata.dataSource === "string" && metadata.dataSource !== "demo";
+
+    if (declaresReal && stops.length > 0) {
+      this.usingRealData = true;
+      this._metadata = metadata;
+      this._stops = stops;
+      this._routesByStopId = groupRoutesByStop(Array.isArray(rawRoutes) ? rawRoutes : []);
+      this._timetableByRouteId = buildTimetableMap(Array.isArray(rawTimetable) ? rawTimetable : []);
     } else {
-      this._activeStops = DEMO_STOPS;
-      this.usingRealStops = false;
+      this.usingRealData = false;
+      this._metadata =
+        metadata && metadata.dataSource === "demo" ? metadata : DEFAULT_DEMO_METADATA;
+      this._stops = DEMO_STOPS;
+      this._routesByStopId = groupRoutesByStop(DEMO_ROUTES);
+      this._timetableByRouteId = DEMO_TIMETABLE_BY_ROUTE_ID;
     }
   },
 
+  getMetadata() {
+    return this._metadata;
+  },
+
   getStops() {
-    return this._activeStops;
+    return this._stops;
   },
 
   getStopById(stopId) {
-    return this._activeStops.find((s) => s.id === stopId) || null;
-  },
-
-  getDirection(stopId, directionId) {
-    const stop = this.getStopById(stopId);
-    if (!stop) return null;
-    return stop.directions.find((d) => d.id === directionId) || null;
+    return this._stops.find((s) => s.id === stopId) || null;
   },
 
   /**
@@ -287,7 +286,7 @@ const DemoBusDataSource = {
    * 各バス停には distance(メートル)を付与する。
    */
   getStopsSortedByDistance(position) {
-    const stops = this._activeStops.map((s) => ({ ...s }));
+    const stops = this._stops.map((s) => ({ ...s }));
     if (!position) return stops;
     return stops
       .map((s) => ({
@@ -298,16 +297,34 @@ const DemoBusDataSource = {
   },
 
   /**
-   * 指定バス停・方面の「次発」以降の便を count 件返す。
-   * サービス運行時間は 05:00〜24:00 と仮定。
+   * 指定停留所を通る系統(方面)一覧を返す。1件も無い場合は、
+   * 「時刻表データ準備中」であることを示す1件のみのダミー系統を返す
+   * (方面プルダウンを空にしないための最小限の措置。架空の時刻は含まない)。
    */
-  getNextDepartures(stopId, directionId, fromDate, count) {
-    const direction = this.getDirection(stopId, directionId);
-    if (!direction || direction.pending) return []; // 時刻表データ準備中の方面には架空の時刻を生成しない
+  getRoutesForStop(stopId) {
+    const routes = this._routesByStopId.get(stopId) || [];
+    if (routes.length === 0) {
+      return [
+        {
+          id: "pending",
+          stopId,
+          label: "時刻表データ準備中",
+          destination: "時刻表データ準備中",
+          pending: true,
+        },
+      ];
+    }
+    return routes;
+  },
 
-    const { intervalMin, phaseMin } = direction;
-    const serviceStartMin = 5 * 60; // 05:00
-    const serviceEndMin = 24 * 60; // 24:00
+  /**
+   * 指定系統の「次発」以降の便を count 件返す。
+   * 時刻表データが存在しない系統に対しては、架空の時刻を生成せず必ず空配列を返す。
+   * サービス運行時間は 05:00〜24:00、時刻表は毎日繰り返すものと仮定する。
+   */
+  getNextDepartures(routeId, fromDate, count) {
+    const times = this._timetableByRouteId.get(routeId);
+    if (!times || times.length === 0) return []; // 時刻表データ準備中
 
     const results = [];
     const dayStartEpoch = TokyoTime.midnightEpoch(fromDate);
@@ -315,12 +332,9 @@ const DemoBusDataSource = {
     let dayOffset = 0;
     while (results.length < count && dayOffset < 3) {
       const baseEpoch = dayStartEpoch + dayOffset * 86400000;
-      for (
-        let m = serviceStartMin + (phaseMin % intervalMin);
-        m < serviceEndMin;
-        m += intervalMin
-      ) {
-        const epoch = baseEpoch + m * 60000;
+      for (const hhmm of times) {
+        const [h, m] = hhmm.split(":").map(Number);
+        const epoch = baseEpoch + (h * 60 + m) * 60000;
         if (epoch > fromDate.getTime()) {
           results.push({ time: new Date(epoch) });
           if (results.length >= count) break;

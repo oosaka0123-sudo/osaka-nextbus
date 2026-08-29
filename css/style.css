@@ -53,6 +53,13 @@ body {
   letter-spacing: 0.02em;
 }
 
+.last-updated {
+  margin: -10px 0 0;
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--color-text-dim);
+}
+
 .demo-badge {
   position: absolute;
   right: 0;

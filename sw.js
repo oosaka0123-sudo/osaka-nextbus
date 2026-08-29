@@ -9,7 +9,7 @@
  * 必ず値を変更すること。変更しないと、古いバージョンをインストール済みの
  * 端末でキャッシュが入れ替わらず、古い画面が表示され続ける原因になる。
  */
-const CACHE_VERSION = "v5";
+const CACHE_VERSION = "v6";
 const CACHE_NAME = `osaka-nextbus-${CACHE_VERSION}`;
 
 const PRECACHE_URLS = [
@@ -19,7 +19,10 @@ const PRECACHE_URLS = [
   "./css/style.css",
   "./js/app.js",
   "./js/data.js",
-  "./data/osaka-citybus-stops.json",
+  "./data/metadata.json",
+  "./data/stops.json",
+  "./data/routes.json",
+  "./data/timetable.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/apple-touch-icon.png",

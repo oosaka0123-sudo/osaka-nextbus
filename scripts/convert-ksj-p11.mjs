@@ -3,7 +3,7 @@
  * scripts/convert-ksj-p11.mjs
  * ---------------------------------------------------------
  * 国土交通省「国土数値情報(バス停留所データ / P11)」の GeoJSON を、
- * このアプリの data/osaka-citybus-stops.json 形式(name/lat/lon)に変換するスクリプト。
+ * このアプリの data/stops.json 形式(name/lat/lon)に変換するスクリプト。
  *
  * 依存パッケージなし。Node.js だけで動作する(`node scripts/convert-ksj-p11.mjs ...`)。
  *
@@ -23,7 +23,7 @@
  * 【2. 事業者名フィールドと停留所名フィールドを指定して変換する】
  *   node scripts/convert-ksj-p11.mjs \
  *     --input path/to/P11-xx_27.geojson \
- *     --output ../data/osaka-citybus-stops.json \
+ *     --output ../data/stops.json \
  *     --name-field "P11_001" \
  *     --operator-field "P11_003" \
  *     --operator "大阪シティバス,大阪市高速電気軌道,Osaka Metro"
@@ -158,7 +158,7 @@ function main() {
 
   console.log(`変換結果: ${stops.length} 件を採用 (事業者不一致で除外: ${skippedByOperator}件, 座標不正で除外: ${skippedByGeometry}件)`);
 
-  const outputPath = args.output || "osaka-citybus-stops.json";
+  const outputPath = args.output || "stops.json";
   writeFileSync(outputPath, JSON.stringify(stops, null, 2) + "\n", "utf-8");
   console.log(`書き出し完了: ${outputPath}`);
 }
