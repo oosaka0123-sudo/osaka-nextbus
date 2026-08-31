@@ -45,15 +45,15 @@ data/
 ├── metadata.json         出典・収録範囲・注意事項
 ├── stops.json            停留所
 ├── routes.json           停留所×系統
-├── timetable.json        既存時刻表
-└── timetable-extra.json  追加時刻表（鶴町一丁目の追加4系統）
+├── timetable.json        基本時刻表（8エントリ）
+└── timetable-extra.json  追加・補正時刻表（追加4 + 上書き補正1）
 ```
 
 `js/timetable-loader.js` が `timetable.json` と `timetable-extra.json` をブラウザ側で結合します。
 
 この方式により、Service Workerがまだページを制御していない**初回アクセス**でも追加時刻表を利用できます。追加ファイルの取得に失敗した場合は既存時刻表だけで起動し、アプリ全体を壊さない設計です。
 
-旧Service Workerが一時的に残る更新途中の端末でも、`routeId + direction + destination` で重複排除し、同じキーは新しく取得した追加時刻表を優先します。
+`routeId + direction + destination` が同じ場合は `timetable-extra.json` 側を優先します。旧Service Worker対策だけでなく、写真再照合で判明した時刻表修正を安全に上書きする補正レイヤーとしても使用します。現在は鶴町一丁目90号の休日ダイヤ補正に利用しています。
 
 ## 主な機能
 
@@ -128,25 +128,27 @@ osaka-nextbus/
 - `HH:MM` 形式（24時以降の深夜便も許容）
 - 時刻が昇順
 - 同一曜日内の重複時刻なし
-- 同一 `routeId + direction + destination` の重複なし
-- `metadata.json` のcoverage件数と時刻表エントリ数が一致
+- 同一ファイル内の `routeId + direction + destination` 重複なし
+- baseとextraで同じ複合キーがある場合はブラウザと同じくextraを正式な上書きとして扱う
+- `metadata.json` のcoverage件数と**結合後の一意な時刻表エントリ数**が一致
 - coverage各要素の `stop / route / direction / destination` がtrim後も空でない文字列
-- coverageと実際の時刻表が停留所・系統・方面・行先で1対1対応する
+- coverageと結合後の実時刻表が停留所・系統・方面・行先で1対1対応する
 - `lastUpdated` が `YYYY-MM-DD` 形式
 
 `manifest.json` や `collector/tests/fixtures/*.json` など、上記5ファイル以外のJSONは `validate-data.mjs` の対象ではありません。
 
 ## ブラウザ回帰テスト
 
-Playwright（Chromium）で、現在は次の7シナリオを自動テストします。
+Playwright（Chromium）で、現在は次の8シナリオを自動テストします。
 
 1. 鶴町一丁目71号の次の3便表示
 2. `timetable-extra.json` 側の鶴町一丁目91号がUIへ結合されること
-3. 幸町一丁目71号の `24:07` が翌日 `00:07` として表示されること
-4. 停留所・系統・方面の `localStorage` 保存と再読み込み復元
-5. GPS成功時に近い順10停留所へ絞り込まれること
-6. GPS拒否時に全停留所から手動選択できること
-7. Service Worker v25でオフライン時もextra側91号を利用できること
+3. extra側の補正がbaseより優先され、90号休日の誤読 `13:51` が除外・80号休日 `09:51` が反映されること
+4. 幸町一丁目71号の `24:07` が翌日 `00:07` として表示されること
+5. 停留所・系統・方面の `localStorage` 保存と再読み込み復元
+6. GPS成功時に近い順10停留所へ絞り込まれること
+7. GPS拒否時に全停留所から手動選択できること
+8. Service Worker v26でオフライン時もextra側91号を利用できること
 
 各テストでは可能な範囲で `pageerror` / `console.error` も監視します。
 
@@ -154,24 +156,25 @@ GitHub Actionsの `.github/workflows/validate-data.yml` がpush/PR時に自動�
 
 ## Service Worker
 
-現在のキャッシュ版は **v25** です。
+現在のキャッシュ版は **v26** です。
 
 オンライン時はネットワークを優先し、成功したレスポンスをキャッシュします。オフライン時のみキャッシュへフォールバックします。
 
 `index.html`、`js/timetable-loader.js`、時刻表本体・追加分をすべてprecacheします。
 
-## 時刻表を追加するときの運用
+## 時刻表を追加・補正するときの運用
 
 1. 現地掲示写真など正当な情報源から転記
 2. `routeId` が `routes.json` に存在することを確認
 3. 平日 / 土曜 / 休日を昇順で登録
-4. `metadata.json` に出典・近似補間の有無を記録
-5. `README.md` / `data/README.md` の収録数を更新
-6. `node scripts/validate-data.mjs` を実行
-7. アプリ変更時は `sw.js` の `CACHE_VERSION` を更新
-8. 次の3便・曜日切替・終バス後ロールオーバーを確認
-9. GitHub ActionsがPASSすることを確認
-10. Copilot Code Reviewで第三者監査
+4. 写真再照合による補正は、必要に応じて `timetable-extra.json` の同一複合キーで上書きする
+5. `metadata.json` に出典・近似補間・補正理由を記録
+6. `README.md` / `data/README.md` の説明を更新
+7. `node scripts/validate-data.mjs` を実行
+8. 配信データ変更時は `sw.js` の `CACHE_VERSION` を更新
+9. 次の3便・曜日切替・終バス後ロールオーバーを確認
+10. GitHub ActionsがPASSすることを確認
+11. Copilot Code Reviewで第三者監査
 
 ## データ方針
 
