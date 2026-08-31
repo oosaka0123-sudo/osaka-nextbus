@@ -10,6 +10,7 @@ on:
       - "scripts/validate-data.mjs"
       - "tests/**"
       - "package.json"
+      - "package-lock.json"
       - "playwright.config.js"
       - ".github/workflows/validate-data.yml"
   pull_request:
@@ -21,6 +22,7 @@ on:
       - "scripts/validate-data.mjs"
       - "tests/**"
       - "package.json"
+      - "package-lock.json"
       - "playwright.config.js"
       - ".github/workflows/validate-data.yml"
   workflow_dispatch:
@@ -36,6 +38,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: "npm"
 
       - name: Validate timetable data
         run: node scripts/validate-data.mjs
@@ -48,7 +51,7 @@ jobs:
 
       - name: Install browser test dependencies
         run: |
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
           npx playwright install --with-deps chromium
 
       - name: Run browser smoke tests
