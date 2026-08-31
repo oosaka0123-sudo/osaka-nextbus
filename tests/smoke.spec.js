@@ -72,6 +72,37 @@ test("extra側の鶴町一丁目91号がUIに結合される", async ({ page }) 
   expectNoBrowserErrors(errors);
 });
 
+test("extra側の補正データがbaseより優先される", async ({ page }) => {
+  const errors = attachErrorCollector(page);
+  await waitForData(page);
+
+  const corrected = await page.evaluate(async () => {
+    const entries = await fetch("data/timetable.json").then((response) => response.json());
+    const route90 = entries.find(
+      (entry) =>
+        entry.routeId === "鶴町一丁目-3a81dc__90号" &&
+        entry.direction === "野田阪神前方面" &&
+        entry.destination === "野田阪神前"
+    );
+    const route80 = entries.find(
+      (entry) =>
+        entry.routeId === "鶴町一丁目-3a81dc__80号" &&
+        entry.direction === "あべの橋方面" &&
+        entry.destination === "あべの橋［天王寺駅前］"
+    );
+    return {
+      route90Holiday: route90?.holiday ?? null,
+      route80Holiday: route80?.holiday ?? null,
+    };
+  });
+
+  expect(corrected.route90Holiday).toContain("14:51");
+  expect(corrected.route90Holiday).not.toContain("13:51");
+  expect(corrected.route80Holiday).toContain("09:51");
+  expect(corrected.route80Holiday).not.toContain("10:51");
+  expectNoBrowserErrors(errors);
+});
+
 test("幸町一丁目71号の24:07を翌日00:07として表示する", async ({ page }) => {
   const errors = attachErrorCollector(page);
   const fixedNow = new Date("2026-08-31T23:50:00+09:00").getTime();
@@ -158,7 +189,7 @@ test("GPS拒否時は全停留所から手動選択できる", async ({ browser,
   await context.close();
 });
 
-test("Service Worker v25でオフラインでもextra側91号を利用できる", async ({ context, page }) => {
+test("Service Worker v26でオフラインでもextra側91号を利用できる", async ({ context, page }) => {
   const errors = attachErrorCollector(page);
   await waitForData(page);
 
@@ -168,12 +199,11 @@ test("Service Worker v25でオフラインでもextra側91号を利用できる"
   });
   expect(swState).toBe("activated");
 
-  // active SWが現在のページを制御する状態にしてからオフラインへ切り替える。
   await page.reload();
   await expect(page.locator("#stop-select option").first()).toBeAttached();
 
   const cacheNames = await page.evaluate(() => caches.keys());
-  expect(cacheNames).toContain("osaka-nextbus-v25");
+  expect(cacheNames).toContain("osaka-nextbus-v26");
 
   await context.setOffline(true);
   await page.reload({ waitUntil: "domcontentloaded" });
