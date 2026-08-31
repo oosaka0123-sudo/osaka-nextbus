@@ -40,8 +40,6 @@ function entryKey(entry) {
 }
 
 function normalizeCoverageStopName(value) {
-  // metadataでは同一停留所内の乗り場識別を「（西）」等で補足する場合がある。
-  // stops.jsonのP11名称には乗り場サフィックスが無いため、末尾の括弧補足だけ除去して比較する。
   return String(value ?? "")
     .trim()
     .replace(/[（(][^（）()]+[）)]$/, "")
@@ -61,7 +59,6 @@ function timeToMinutes(value) {
   if (!match) return null;
   const hour = Number(match[1]);
   const minute = Number(match[2]);
-  // 大阪シティバスの深夜便表記を想定し、00:00〜29:59まで許容する。
   if (hour > 29) return null;
   return hour * 60 + minute;
 }
@@ -118,6 +115,19 @@ function validateTimetableEntry(entry, index, source, routeIds) {
   }
 }
 
+function validateUniqueEntryKeys(entries, source) {
+  const seen = new Set();
+  for (let i = 0; i < entries.length; i += 1) {
+    const entry = entries[i];
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) continue;
+    const key = entryKey(entry);
+    if (seen.has(key)) {
+      fail(`${source}[${i}]: 同一 routeId + direction + destination がファイル内で重複しています: ${entry.routeId} / ${entry.direction} / ${entry.destination}`);
+    }
+    seen.add(key);
+  }
+}
+
 const [stops, routes, base, extra, metadata] = await Promise.all([
   readJson(FILES.stops),
   readJson(FILES.routes),
@@ -156,7 +166,6 @@ if (![stops, routes, base, extra, metadata].every(Boolean)) {
       }
 
       if (!stop.id) {
-        // アプリ側ではid省略時に自動生成できるため警告に留める。
         warn(`${prefix}: id が省略されています（実データでは安定性のため明示推奨）`);
         continue;
       }
@@ -202,29 +211,33 @@ if (![stops, routes, base, extra, metadata].every(Boolean)) {
 
   if (Array.isArray(base)) {
     base.forEach((entry, index) => validateTimetableEntry(entry, index, FILES.base, routeIds));
+    validateUniqueEntryKeys(base, FILES.base);
   }
   if (Array.isArray(extra)) {
     extra.forEach((entry, index) => validateTimetableEntry(entry, index, FILES.extra, routeIds));
+    validateUniqueEntryKeys(extra, FILES.extra);
   }
 
-  const allEntries = [...(Array.isArray(base) ? base : []), ...(Array.isArray(extra) ? extra : [])];
-  const timetableKeys = new Map();
-  allEntries.forEach((entry, index) => {
-    if (!entry || typeof entry !== "object") return;
+  const mergedByKey = new Map();
+  for (const entry of Array.isArray(base) ? base : []) {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) continue;
+    mergedByKey.set(entryKey(entry), entry);
+  }
+  let overrideCount = 0;
+  for (const entry of Array.isArray(extra) ? extra : []) {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) continue;
     const key = entryKey(entry);
-    if (timetableKeys.has(key)) {
-      fail(`時刻表キーが重複しています: ${entry.routeId} / ${entry.direction} / ${entry.destination}`);
-    } else {
-      timetableKeys.set(key, index);
-    }
-  });
+    if (mergedByKey.has(key)) overrideCount += 1;
+    mergedByKey.set(key, entry);
+  }
+  const allEntries = [...mergedByKey.values()];
 
   const coverage = metadata?.timetableSource?.coverage;
   if (!Array.isArray(coverage)) {
     fail(`${FILES.metadata}: timetableSource.coverage が配列ではありません`);
   } else {
     if (coverage.length !== allEntries.length) {
-      fail(`${FILES.metadata}: coverage件数(${coverage.length})と時刻表エントリ件数(${allEntries.length})が一致しません`);
+      fail(`${FILES.metadata}: coverage件数(${coverage.length})と結合後時刻表エントリ件数(${allEntries.length})が一致しません`);
     }
 
     const coverageKeys = new Set();
@@ -272,7 +285,7 @@ if (![stops, routes, base, extra, metadata].every(Boolean)) {
 
   console.log(`停留所: ${stopIds.size}件`);
   console.log(`停留所×系統: ${routeIds.size}件`);
-  console.log(`時刻表: base ${Array.isArray(base) ? base.length : 0} + extra ${Array.isArray(extra) ? extra.length : 0} = ${allEntries.length}系統×方面`);
+  console.log(`時刻表: base ${Array.isArray(base) ? base.length : 0} + extra ${Array.isArray(extra) ? extra.length : 0}（上書き ${overrideCount}） = 結合後 ${allEntries.length}系統×方面`);
 }
 
 for (const message of warnings) console.warn(`WARN: ${message}`);
