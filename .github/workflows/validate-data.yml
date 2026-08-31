@@ -8,6 +8,9 @@ on:
       - "index.html"
       - "sw.js"
       - "scripts/validate-data.mjs"
+      - "tests/**"
+      - "package.json"
+      - "playwright.config.js"
       - ".github/workflows/validate-data.yml"
   pull_request:
     paths:
@@ -16,6 +19,9 @@ on:
       - "index.html"
       - "sw.js"
       - "scripts/validate-data.mjs"
+      - "tests/**"
+      - "package.json"
+      - "playwright.config.js"
       - ".github/workflows/validate-data.yml"
   workflow_dispatch:
 
@@ -39,3 +45,11 @@ jobs:
           node --check js/timetable-loader.js
           node --check js/data.js
           node --check js/app.js
+
+      - name: Install browser test dependencies
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Run browser smoke tests
+        run: npm run test:smoke
