@@ -12,7 +12,7 @@
 - 時刻表: 現地掲示写真等を目視確認して手動整備
 - 収録済み: **12系統×方面**
 - 未収録系統は架空データを作らず「🚧 時刻表データ準備中」と表示
-- GitHub Actionsでデータ・JavaScript・主要ブラウザ動作をpush/PR時に自動検証
+- GitHub Actionsでデータ・JavaScript・Chromiumブラウザ動作をpush/PR時に自動検証
 
 ## 収録済み時刻表
 
@@ -130,7 +130,7 @@ osaka-nextbus/
 - 同一曜日内の重複時刻なし
 - 同一 `routeId + direction + destination` の重複なし
 - `metadata.json` のcoverage件数と時刻表エントリ数が一致
-- coverage各要素の `stop / route / direction / destination` が揃っている
+- coverage各要素の `stop / route / direction / destination` がtrim後も空でない文字列
 - coverageと実際の時刻表が停留所・系統・方面・行先で1対1対応する
 - `lastUpdated` が `YYYY-MM-DD` 形式
 
@@ -138,7 +138,7 @@ osaka-nextbus/
 
 ## ブラウザ回帰テスト
 
-Playwrightで、現在は次の7シナリオを自動テストします。
+Playwright（Chromium）で、現在は次の7シナリオを自動テストします。
 
 1. 鶴町一丁目71号の次の3便表示
 2. `timetable-extra.json` 側の鶴町一丁目91号がUIへ結合されること
@@ -150,7 +150,7 @@ Playwrightで、現在は次の7シナリオを自動テストします。
 
 各テストでは可能な範囲で `pageerror` / `console.error` も監視します。
 
-GitHub Actionsの `.github/workflows/validate-data.yml` がpush/PR時に自動実行し、データvalidator、JavaScript構文、Playwrightブラウザ回帰をまとめて検査します。npm依存は `package-lock.json` をコミットし、CIでは `npm ci` を使って固定します。
+GitHub Actionsの `.github/workflows/validate-data.yml` がpush/PR時に自動実行し、データvalidator、JavaScript構文、Playwright Chromium回帰をまとめて検査します。npm依存は `package-lock.json` をコミットし、CIでは `npm ci` を使って固定します。
 
 ## Service Worker
 
