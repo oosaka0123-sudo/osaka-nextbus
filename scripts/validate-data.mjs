@@ -31,6 +31,10 @@ function warn(message) {
   warnings.push(message);
 }
 
+function isNonEmptyString(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
 function entryKey(entry) {
   return `${entry.routeId ?? ""}\u0000${entry.direction ?? ""}\u0000${entry.destination ?? ""}`;
 }
@@ -44,8 +48,12 @@ function normalizeCoverageStopName(value) {
     .trim();
 }
 
+function normalizeCoverageValue(value) {
+  return String(value ?? "").trim();
+}
+
 function coverageKey(stop, route, direction, destination) {
-  return `${normalizeCoverageStopName(stop)}\u0000${route ?? ""}\u0000${direction ?? ""}\u0000${destination ?? ""}`;
+  return `${normalizeCoverageStopName(stop)}\u0000${normalizeCoverageValue(route)}\u0000${normalizeCoverageValue(direction)}\u0000${normalizeCoverageValue(destination)}`;
 }
 
 function timeToMinutes(value) {
@@ -227,8 +235,8 @@ if (![stops, routes, base, extra, metadata].every(Boolean)) {
         fail(`${prefix}: オブジェクトではありません`);
         continue;
       }
-      if (!item.stop || !item.route || !item.direction || !item.destination) {
-        fail(`${prefix}: stop / route / direction / destination のいずれかが空です`);
+      if (![item.stop, item.route, item.direction, item.destination].every(isNonEmptyString)) {
+        fail(`${prefix}: stop / route / direction / destination は空でない文字列で指定してください`);
         continue;
       }
       if (!item.note || typeof item.note !== "string") {
