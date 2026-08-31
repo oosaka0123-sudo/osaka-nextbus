@@ -12,7 +12,7 @@
 - 時刻表: 現地掲示写真等を目視確認して手動整備
 - 収録済み: **12系統×方面**
 - 未収録系統は架空データを作らず「🚧 時刻表データ準備中」と表示
-- GitHub Actionsでデータ・JavaScriptをpush/PR時に自動検証
+- GitHub Actionsでデータ・JavaScript・主要ブラウザ動作をpush/PR時に自動検証
 
 ## 収録済み時刻表
 
@@ -74,9 +74,13 @@ data/
 ```text
 osaka-nextbus/
 ├── AGENTS.md
+├── CLAUDE.md
 ├── index.html
 ├── manifest.json
 ├── sw.js
+├── package.json
+├── package-lock.json
+├── playwright.config.js
 ├── .github/
 │   └── workflows/
 │       └── validate-data.yml
@@ -97,15 +101,27 @@ osaka-nextbus/
 │   ├── validate-data.mjs
 │   ├── convert-ksj-p11.mjs
 │   └── timetable-csv-to-json.mjs
+├── tests/
+│   └── smoke.spec.js
 └── icons/
 ```
 
 ## 自動検証
 
-`node scripts/validate-data.mjs` で次を機械検証します。
+`node scripts/validate-data.mjs` は、次の**運行データ5ファイル**を対象に機械検証します。
 
-- 全JSONが正常にparseできる
+- `data/stops.json`
+- `data/routes.json`
+- `data/timetable.json`
+- `data/timetable-extra.json`
+- `data/metadata.json`
+
+検証内容：
+
+- 上記5ファイルが正常にJSON parseできる
+- 停留所ID重複、停留所名、緯度経度の妥当性
 - `routes.json` の `stopId` が `stops.json` に存在する
+- route ID重複、route labelの欠落
 - 時刻表の `routeId` が `routes.json` に存在する
 - `direction` / `destination` が空でない
 - `weekday` / `saturday` / `holiday` が配列
@@ -114,8 +130,27 @@ osaka-nextbus/
 - 同一曜日内の重複時刻なし
 - 同一 `routeId + direction + destination` の重複なし
 - `metadata.json` のcoverage件数と時刻表エントリ数が一致
+- coverage各要素の `stop / route / direction / destination` が揃っている
+- coverageと実際の時刻表が停留所・系統・方面・行先で1対1対応する
+- `lastUpdated` が `YYYY-MM-DD` 形式
 
-GitHub Actionsの `.github/workflows/validate-data.yml` がpush/PR時に自動実行し、上記に加えて `js/timetable-loader.js` / `js/data.js` / `js/app.js` の構文も検査します。
+`manifest.json` や `collector/tests/fixtures/*.json` など、上記5ファイル以外のJSONは `validate-data.mjs` の対象ではありません。
+
+## ブラウザ回帰テスト
+
+Playwrightで、現在は次の7シナリオを自動テストします。
+
+1. 鶴町一丁目71号の次の3便表示
+2. `timetable-extra.json` 側の鶴町一丁目91号がUIへ結合されること
+3. 幸町一丁目71号の `24:07` が翌日 `00:07` として表示されること
+4. 停留所・系統・方面の `localStorage` 保存と再読み込み復元
+5. GPS成功時に近い順10停留所へ絞り込まれること
+6. GPS拒否時に全停留所から手動選択できること
+7. Service Worker v25でオフライン時もextra側91号を利用できること
+
+各テストでは可能な範囲で `pageerror` / `console.error` も監視します。
+
+GitHub Actionsの `.github/workflows/validate-data.yml` がpush/PR時に自動実行し、データvalidator、JavaScript構文、Playwrightブラウザ回帰をまとめて検査します。npm依存は `package-lock.json` をコミットし、CIでは `npm ci` を使って固定します。
 
 ## Service Worker
 
@@ -151,6 +186,14 @@ GitHub Actionsの `.github/workflows/validate-data.yml` がpush/PR時に自動�
 
 ```bash
 node scripts/validate-data.mjs
+npm ci
+npx playwright install chromium
+npm run test:smoke
+```
+
+単純にブラウザで確認する場合は、別ターミナルで以下を起動します。
+
+```bash
 python3 -m http.server 8000
 ```
 
