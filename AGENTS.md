@@ -13,6 +13,7 @@
 - 判読不能な単発時刻は省略してよい。省略理由は `data/metadata.json` に記録する。
 - 現地掲示が明示的に「○分間隔」「○〜○分間隔」と書かれている場合に限り、個人利用向けの近似補間を許容する。その場合は必ず `metadata.json` に近似であることを明記する。
 - 既存データを壊さない。時刻表追加では既存エントリを不要に書き換えない。
+- 写真再照合で既存時刻表の修正が必要になった場合は、巨大なbaseを無理に再生成せず、必要に応じて `timetable-extra.json` の同一複合キーで安全に上書き補正してよい。
 
 ## 時刻表データの必須ルール
 
@@ -22,22 +23,24 @@
 - 運休曜日は `[]` を使う。
 - 発車時刻は `HH:MM`。深夜便は `24:07` のような24時超え表記を利用できる。
 - 各曜日配列は昇順・重複なし。
-- `routeId + direction + destination` の同一キーを重複登録しない。
+- 同一ファイル内では `routeId + direction + destination` を重複登録しない。
+- baseとextraで同一キーを使うのは**意図した上書き補正の場合だけ**。その場合はextraを正とし、補正理由を `data/metadata.json` に記録する。
 - 新規時刻表を追加したら `data/metadata.json` の `timetableSource.coverage` も必ず追加する。
-- READMEの収録数も実データと一致させる。
+- 上書き補正だけの場合はcoverageを重複追加せず、既存coverageのnoteへ補正理由を追記する。
+- READMEの収録数は結合後の一意な系統×方面数と一致させる。
 
 ## 現在の時刻表構成
 
-- `data/timetable.json`: 既存8系統×方面
-- `data/timetable-extra.json`: 追加4系統×方面
+- `data/timetable.json`: 基本8エントリ
+- `data/timetable-extra.json`: 追加4エントリ + 上書き補正1エントリ
 - `js/timetable-loader.js`: 2ファイルを結合。extra取得失敗時はbaseのみで継続。同一キーはextra優先。
 
-合計12系統×方面（2026-08-31時点）。
+rawでは13エントリ、結合後は合計12系統×方面（2026-08-31時点）。
 
 ## PWA / Service Worker
 
 - Service Workerはnetwork-first。
-- 現在の `CACHE_VERSION` は v25。
+- 現在の `CACHE_VERSION` は v26。
 - `index.html` / JS / CSS / 時刻表ファイルなどPWA配信物を変更して、旧キャッシュ残存が問題になり得る場合は `CACHE_VERSION` を上げる。
 - READMEや検証スクリプトだけの変更では、PWAキャッシュ版を無意味に上げなくてよい。
 
@@ -61,8 +64,9 @@ GitHub Actions `Validate bus data` がPASSすることも確認する。
 - routeId参照
 - HH:MM形式
 - 昇順
-- 重複なし
-- metadata coverage件数
+- 各ファイル内の重複なし
+- extra上書き後の結合結果
+- metadata coverage件数と結合後一意エントリ数
 - JavaScript構文
 
 UIや時刻表を変更した場合は追加で、次の3便・平日/土曜/休日切替・終バス後ロールオーバー・既存系統の回帰を確認する。
