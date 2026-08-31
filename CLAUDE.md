@@ -16,11 +16,11 @@
 
 時刻表は2ファイル構成。
 
-- `data/timetable.json` — 既存8系統×方面
-- `data/timetable-extra.json` — 追加4系統×方面
+- `data/timetable.json` — 基本8エントリ
+- `data/timetable-extra.json` — 追加4エントリ + 上書き補正1エントリ
 - `js/timetable-loader.js` — 両者を結合（extra失敗時はbaseのみ、同一キーはextra優先）
 
-合計12系統×方面（2026-08-31時点）。
+rawでは13エントリ、結合後は合計12系統×方面（2026-08-31時点）。extraの同一キーは写真再照合などの意図した補正として利用できるが、理由をmetadataへ必ず記録する。
 
 ## commit/push前の必須確認
 
@@ -42,6 +42,7 @@
 16. 古いCACHE_VERSIONのキャッシュがactivate後に削除される
 17. 375〜390px程度のスマホ幅で致命的な表示崩れなし
 18. 既存収録系統の回帰確認
+19. baseとextraが同一キーの場合、extraの補正値がUI/merged fetchへ反映される
 
 ## Playwright
 
@@ -75,6 +76,7 @@ python3 -m http.server 8123
 - 先頭便・中間便・終便を最低1件ずつ確認
 - 91急行など運休曜日が `[]` の場合、その曜日に架空便が出ない
 - 近似補間を使ったデータは `metadata.json` に注記がある
+- 上書き補正を使った場合はbaseとextraの差分内容・補正理由を確認する
 
 ## Service Worker
 
