@@ -100,3 +100,33 @@ test("選択した停留所・系統・方面が再読み込み後も復元さ�
   await expect(page.locator("#route-select")).toHaveValue("鶴町一丁目-3a81dc__90号");
   await expect(page.locator("#dest-0")).toHaveText("野田阪神前");
 });
+
+test("GPS成功時は近い順10停留所に絞り込まれる", async ({ browser }) => {
+  const context = await browser.newContext({
+    permissions: ["geolocation"],
+    geolocation: { latitude: 34.6937, longitude: 135.5023 },
+    viewport: { width: 390, height: 844 },
+  });
+  const page = await context.newPage();
+  await page.goto("/");
+
+  await expect(page.locator("#nearby-label")).toBeVisible();
+  await expect(page.locator("#stop-select option")).toHaveCount(10);
+  await expect(page.locator("#status-message")).toBeHidden();
+  await context.close();
+});
+
+test("GPS拒否時は全停留所から手動選択できる", async ({ browser }) => {
+  const context = await browser.newContext({
+    permissions: [],
+    viewport: { width: 390, height: 844 },
+  });
+  const page = await context.newPage();
+  await page.goto("/");
+
+  await expect(page.locator("#status-message")).toContainText(/位置情報|現在地/);
+  await expect(page.locator("#nearby-label")).toBeHidden();
+  const count = await page.locator("#stop-select option").count();
+  expect(count).toBeGreaterThan(10);
+  await context.close();
+});
