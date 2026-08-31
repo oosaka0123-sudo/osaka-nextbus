@@ -5,7 +5,8 @@
  * Service Worker の制御開始前（PWA初回アクセス）でも追加時刻表が利用できるよう、
  * アプリの fetch レイヤーで結合する。
  *
- * それ以外の fetch はそのままブラウザ標準の fetch に委譲する。
+ * 旧Service Worker(v21/v22)が一時的に残る端末ではbase側が既にextraを含む
+ * 可能性があるため、routeId + direction + destination で重複排除する。
  */
 (() => {
   const nativeFetch = window.fetch.bind(window);
@@ -16,6 +17,20 @@
     if (input instanceof URL) return input;
     if (input && typeof input.url === "string") return new URL(input.url, document.baseURI);
     return null;
+  }
+
+  function mergeWithoutDuplicates(base, extra) {
+    const merged = [];
+    const seen = new Set();
+
+    for (const item of [...base, ...extra]) {
+      if (!item || typeof item !== "object") continue;
+      const key = `${item.routeId || ""}\u0000${item.direction || ""}\u0000${item.destination || ""}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push(item);
+    }
+    return merged;
   }
 
   window.fetch = async function mergedTimetableFetch(input, init) {
@@ -31,22 +46,20 @@
     try {
       extraResponse = await nativeFetch(EXTRA_URL, init);
     } catch (_error) {
-      // 追加ファイルだけ取得できない場合でも、既存8系統を壊さない。
       return baseResponse;
     }
 
     if (!extraResponse.ok) return baseResponse;
 
     try {
-      const [base, extra] = await Promise.all([
+      const [baseRaw, extraRaw] = await Promise.all([
         baseResponse.clone().json(),
         extraResponse.json(),
       ]);
 
-      const merged = [
-        ...(Array.isArray(base) ? base : []),
-        ...(Array.isArray(extra) ? extra : []),
-      ];
+      const base = Array.isArray(baseRaw) ? baseRaw : [];
+      const extra = Array.isArray(extraRaw) ? extraRaw : [];
+      const merged = mergeWithoutDuplicates(base, extra);
 
       return new Response(JSON.stringify(merged), {
         status: baseResponse.status,
@@ -54,7 +67,7 @@
         headers: { "Content-Type": "application/json; charset=utf-8" },
       });
     } catch (_error) {
-      // JSONの追加側に問題が起きても、既存データでアプリを起動できるようにする。
+      // JSON追加側に問題が起きても既存データで起動できるようにする。
       return baseResponse;
     }
   };
