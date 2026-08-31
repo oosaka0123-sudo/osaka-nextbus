@@ -7,6 +7,7 @@
  *
  * 旧Service Worker(v21/v22)が一時的に残る端末ではbase側が既にextraを含む
  * 可能性があるため、routeId + direction + destination で重複排除する。
+ * 同じキーがある場合は新しく取得したextra側を優先する。
  */
 (() => {
   const nativeFetch = window.fetch.bind(window);
@@ -19,18 +20,23 @@
     return null;
   }
 
-  function mergeWithoutDuplicates(base, extra) {
-    const merged = [];
-    const seen = new Set();
+  function entryKey(item) {
+    return `${item.routeId || ""}\u0000${item.direction || ""}\u0000${item.destination || ""}`;
+  }
 
-    for (const item of [...base, ...extra]) {
+  function mergePreferExtra(base, extra) {
+    const byKey = new Map();
+
+    for (const item of base) {
       if (!item || typeof item !== "object") continue;
-      const key = `${item.routeId || ""}\u0000${item.direction || ""}\u0000${item.destination || ""}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      merged.push(item);
+      byKey.set(entryKey(item), item);
     }
-    return merged;
+    for (const item of extra) {
+      if (!item || typeof item !== "object") continue;
+      // extraは現在配信中の追加データなので、同じキーなら旧base内の値を上書きする。
+      byKey.set(entryKey(item), item);
+    }
+    return [...byKey.values()];
   }
 
   window.fetch = async function mergedTimetableFetch(input, init) {
@@ -59,7 +65,7 @@
 
       const base = Array.isArray(baseRaw) ? baseRaw : [];
       const extra = Array.isArray(extraRaw) ? extraRaw : [];
-      const merged = mergeWithoutDuplicates(base, extra);
+      const merged = mergePreferExtra(base, extra);
 
       return new Response(JSON.stringify(merged), {
         status: baseResponse.status,
