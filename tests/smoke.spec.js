@@ -122,8 +122,9 @@ test("選択した停留所・系統・方面が再読み込み後も復元さ�
   expectNoBrowserErrors(errors);
 });
 
-test("GPS成功時は近い順10停留所に絞り込まれる", async ({ browser }) => {
+test("GPS成功時は近い順10停留所に絞り込まれる", async ({ browser, baseURL }) => {
   const context = await browser.newContext({
+    baseURL,
     permissions: ["geolocation"],
     geolocation: { latitude: 34.6937, longitude: 135.5023 },
     viewport: { width: 390, height: 844 },
@@ -139,8 +140,9 @@ test("GPS成功時は近い順10停留所に絞り込まれる", async ({ browse
   await context.close();
 });
 
-test("GPS拒否時は全停留所から手動選択できる", async ({ browser }) => {
+test("GPS拒否時は全停留所から手動選択できる", async ({ browser, baseURL }) => {
   const context = await browser.newContext({
+    baseURL,
     permissions: [],
     viewport: { width: 390, height: 844 },
   });
