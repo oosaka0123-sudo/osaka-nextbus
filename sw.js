@@ -7,7 +7,7 @@
  * timetable-extra.json は現地写真から追加した時刻表を保持し、
  * data/timetable.json へのリクエスト時に既存データと結合して返す。
  */
-const CACHE_VERSION = "v21";
+const CACHE_VERSION = "v22";
 const CACHE_NAME = `osaka-nextbus-${CACHE_VERSION}`;
 const EXTRA_TIMETABLE_URL = "./data/timetable-extra.json";
 
@@ -49,9 +49,24 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+async function buildMergedTimetableResponse(baseResponse, extraResponse) {
+  const base = baseResponse ? await baseResponse.json() : [];
+  const extra = extraResponse ? await extraResponse.json() : [];
+  const merged = [
+    ...(Array.isArray(base) ? base : []),
+    ...(Array.isArray(extra) ? extra : []),
+  ];
+
+  return new Response(JSON.stringify(merged), {
+    status: 200,
+    headers: { "Content-Type": "application/json; charset=utf-8" },
+  });
+}
+
 async function mergedTimetableResponse(request) {
+  const extraUrl = new URL(EXTRA_TIMETABLE_URL, self.location.href);
+
   try {
-    const extraUrl = new URL(EXTRA_TIMETABLE_URL, self.location.href);
     const [baseResponse, extraResponse] = await Promise.all([
       fetch(request),
       fetch(extraUrl),
@@ -59,23 +74,25 @@ async function mergedTimetableResponse(request) {
 
     if (!baseResponse.ok) throw new Error(`base timetable HTTP ${baseResponse.status}`);
 
-    const base = await baseResponse.json();
-    const extra = extraResponse.ok ? await extraResponse.json() : [];
-    const merged = [
-      ...(Array.isArray(base) ? base : []),
-      ...(Array.isArray(extra) ? extra : []),
-    ];
+    // キャッシュには「結合前」のbase/extraを別々に保存する。
+    // 結合済みレスポンスを timetable.json のキーへ保存すると、オフライン時に
+    // extraを再結合して重複する可能性があるため保存しない。
+    const cache = await caches.open(CACHE_NAME);
+    await cache.put(request, baseResponse.clone());
+    if (extraResponse.ok) await cache.put(extraUrl, extraResponse.clone());
 
-    const response = new Response(JSON.stringify(merged), {
-      status: 200,
-      headers: { "Content-Type": "application/json; charset=utf-8" },
-    });
-
-    const clone = response.clone();
-    caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-    return response;
+    return buildMergedTimetableResponse(baseResponse, extraResponse.ok ? extraResponse : null);
   } catch (_error) {
-    return (await caches.match(request)) || Response.error();
+    // 初回インストール直後の完全オフラインでも、precache済みのbaseとextraを
+    // それぞれ取り出して結合する。
+    const cache = await caches.open(CACHE_NAME);
+    const [cachedBase, cachedExtra] = await Promise.all([
+      cache.match(request),
+      cache.match(extraUrl),
+    ]);
+
+    if (!cachedBase) return Response.error();
+    return buildMergedTimetableResponse(cachedBase, cachedExtra || null);
   }
 }
 
