@@ -35,6 +35,19 @@ function entryKey(entry) {
   return `${entry.routeId ?? ""}\u0000${entry.direction ?? ""}\u0000${entry.destination ?? ""}`;
 }
 
+function normalizeCoverageStopName(value) {
+  // metadataでは同一停留所内の乗り場識別を「（西）」等で補足する場合がある。
+  // stops.jsonのP11名称には乗り場サフィックスが無いため、末尾の括弧補足だけ除去して比較する。
+  return String(value ?? "")
+    .trim()
+    .replace(/[（(][^（）()]+[）)]$/, "")
+    .trim();
+}
+
+function coverageKey(stop, route, direction, destination) {
+  return `${normalizeCoverageStopName(stop)}\u0000${route ?? ""}\u0000${direction ?? ""}\u0000${destination ?? ""}`;
+}
+
 function timeToMinutes(value) {
   const match = /^(\d{2}):([0-5]\d)$/.exec(value);
   if (!match) return null;
@@ -113,21 +126,68 @@ if (![stops, routes, base, extra, metadata].every(Boolean)) {
   if (!Array.isArray(base)) fail(`${FILES.base}: 配列ではありません`);
   if (!Array.isArray(extra)) fail(`${FILES.extra}: 配列ではありません`);
 
-  const stopIds = new Set(Array.isArray(stops) ? stops.map((stop) => stop?.id).filter(Boolean) : []);
+  const stopIds = new Set();
+  const stopById = new Map();
+
+  if (Array.isArray(stops)) {
+    for (let i = 0; i < stops.length; i += 1) {
+      const stop = stops[i];
+      const prefix = `${FILES.stops}[${i}]`;
+      if (!stop || typeof stop !== "object" || Array.isArray(stop)) {
+        fail(`${prefix}: オブジェクトではありません`);
+        continue;
+      }
+      if (!stop.name || typeof stop.name !== "string") {
+        fail(`${prefix}: name が空です`);
+      }
+      if (typeof stop.lat !== "number" || !Number.isFinite(stop.lat) || stop.lat < -90 || stop.lat > 90) {
+        fail(`${prefix}: lat が不正です: ${stop.lat}`);
+      }
+      if (typeof stop.lon !== "number" || !Number.isFinite(stop.lon) || stop.lon < -180 || stop.lon > 180) {
+        fail(`${prefix}: lon が不正です: ${stop.lon}`);
+      }
+
+      if (!stop.id) {
+        // アプリ側ではid省略時に自動生成できるため警告に留める。
+        warn(`${prefix}: id が省略されています（実データでは安定性のため明示推奨）`);
+        continue;
+      }
+      if (typeof stop.id !== "string") {
+        fail(`${prefix}: id が文字列ではありません`);
+        continue;
+      }
+      if (stopIds.has(stop.id)) {
+        fail(`${prefix}: stop id が重複しています: ${stop.id}`);
+        continue;
+      }
+      stopIds.add(stop.id);
+      stopById.set(stop.id, stop);
+    }
+  }
+
   const routeIds = new Set();
+  const routeById = new Map();
 
   if (Array.isArray(routes)) {
     for (let i = 0; i < routes.length; i += 1) {
       const route = routes[i];
       const prefix = `${FILES.routes}[${i}]`;
-      if (!route?.id) {
+      if (!route || typeof route !== "object" || Array.isArray(route)) {
+        fail(`${prefix}: オブジェクトではありません`);
+        continue;
+      }
+      if (!route.id || typeof route.id !== "string") {
         fail(`${prefix}: id がありません`);
         continue;
       }
       if (routeIds.has(route.id)) fail(`${prefix}: route id が重複しています: ${route.id}`);
       routeIds.add(route.id);
+      routeById.set(route.id, route);
       if (!route.stopId || !stopIds.has(route.stopId)) {
         fail(`${prefix}: stopId が stops.json に存在しません: ${route.stopId ?? "(empty)"}`);
+      }
+      if (!route.label || typeof route.label !== "string") {
+        fail(`${prefix}: label が空です`);
       }
     }
   }
@@ -154,13 +214,52 @@ if (![stops, routes, base, extra, metadata].every(Boolean)) {
   const coverage = metadata?.timetableSource?.coverage;
   if (!Array.isArray(coverage)) {
     fail(`${FILES.metadata}: timetableSource.coverage が配列ではありません`);
-  } else if (coverage.length !== allEntries.length) {
-    fail(`${FILES.metadata}: coverage件数(${coverage.length})と時刻表エントリ件数(${allEntries.length})が一致しません`);
+  } else {
+    if (coverage.length !== allEntries.length) {
+      fail(`${FILES.metadata}: coverage件数(${coverage.length})と時刻表エントリ件数(${allEntries.length})が一致しません`);
+    }
+
+    const coverageKeys = new Set();
+    for (let i = 0; i < coverage.length; i += 1) {
+      const item = coverage[i];
+      const prefix = `${FILES.metadata}.timetableSource.coverage[${i}]`;
+      if (!item || typeof item !== "object" || Array.isArray(item)) {
+        fail(`${prefix}: オブジェクトではありません`);
+        continue;
+      }
+      if (!item.stop || !item.route || !item.direction || !item.destination) {
+        fail(`${prefix}: stop / route / direction / destination のいずれかが空です`);
+        continue;
+      }
+      if (!item.note || typeof item.note !== "string") {
+        warn(`${prefix}: note が空です`);
+      }
+      const key = coverageKey(item.stop, item.route, item.direction, item.destination);
+      if (coverageKeys.has(key)) {
+        fail(`${prefix}: coverageが重複しています: ${item.stop} / ${item.route} / ${item.direction} / ${item.destination}`);
+      }
+      coverageKeys.add(key);
+    }
+
+    for (const entry of allEntries) {
+      if (!entry || typeof entry !== "object") continue;
+      const route = routeById.get(entry.routeId);
+      const stop = route ? stopById.get(route.stopId) : null;
+      if (!route || !stop) continue;
+      const expectedKey = coverageKey(stop.name, route.label, entry.direction, entry.destination);
+      if (!coverageKeys.has(expectedKey)) {
+        fail(`metadata coverageに対応行がありません: ${stop.name} / ${route.label} / ${entry.direction} / ${entry.destination}`);
+      }
+    }
   }
 
   const note = metadata?.note;
   if (typeof note !== "string" || !note.includes(`${allEntries.length}系統×方面`)) {
     warn(`${FILES.metadata}: note に現在の収録数「${allEntries.length}系統×方面」が見つかりません`);
+  }
+
+  if (typeof metadata?.lastUpdated !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(metadata.lastUpdated)) {
+    fail(`${FILES.metadata}: lastUpdated は YYYY-MM-DD 形式で指定してください`);
   }
 
   console.log(`停留所: ${stopIds.size}件`);
