@@ -1,5 +1,18 @@
 const { test, expect } = require("@playwright/test");
 
+function attachErrorCollector(page) {
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(`pageerror: ${error.message}`));
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(`console.error: ${message.text()}`);
+  });
+  return errors;
+}
+
+function expectNoBrowserErrors(errors) {
+  expect(errors, errors.join("\n")).toEqual([]);
+}
+
 async function waitForData(page) {
   await page.goto("/");
   await expect(page.locator("#stop-select option").first()).toBeAttached();
@@ -24,6 +37,7 @@ function hhmm(locator) {
 }
 
 test("鶴町一丁目71号で次の3便が表示される", async ({ page }) => {
+  const errors = attachErrorCollector(page);
   await waitForData(page);
   await selectRoute(
     page,
@@ -37,9 +51,11 @@ test("鶴町一丁目71号で次の3便が表示される", async ({ page }) => 
   await hhmm(page.locator("#time-1"));
   await hhmm(page.locator("#time-2"));
   await expect(page.locator("#pending-message")).toBeHidden();
+  expectNoBrowserErrors(errors);
 });
 
 test("extra側の鶴町一丁目91号がUIに結合される", async ({ page }) => {
+  const errors = attachErrorCollector(page);
   await waitForData(page);
   await selectRoute(
     page,
@@ -53,9 +69,11 @@ test("extra側の鶴町一丁目91号がUIに結合される", async ({ page }) 
   await hhmm(page.locator("#time-1"));
   await hhmm(page.locator("#time-2"));
   await expect(page.locator("#pending-message")).toBeHidden();
+  expectNoBrowserErrors(errors);
 });
 
 test("幸町一丁目71号の24:07を翌日00:07として表示する", async ({ page }) => {
+  const errors = attachErrorCollector(page);
   const fixedNow = new Date("2026-08-31T23:50:00+09:00").getTime();
   await page.addInitScript(({ now }) => {
     const OriginalDate = Date;
@@ -82,9 +100,11 @@ test("幸町一丁目71号の24:07を翌日00:07として表示する", async ({
   await expect(page.locator("#eta-0")).toHaveText("3");
   await expect(page.locator("#time-1")).toHaveText("00:07");
   await expect(page.locator("#eta-1")).toHaveText("あと 17分");
+  expectNoBrowserErrors(errors);
 });
 
 test("選択した停留所・系統・方面が再読み込み後も復元される", async ({ page }) => {
+  const errors = attachErrorCollector(page);
   await waitForData(page);
   await selectRoute(
     page,
@@ -99,6 +119,7 @@ test("選択した停留所・系統・方面が再読み込み後も復元さ�
   await expect(page.locator("#stop-select")).toHaveValue("鶴町一丁目-3a81dc");
   await expect(page.locator("#route-select")).toHaveValue("鶴町一丁目-3a81dc__90号");
   await expect(page.locator("#dest-0")).toHaveText("野田阪神前");
+  expectNoBrowserErrors(errors);
 });
 
 test("GPS成功時は近い順10停留所に絞り込まれる", async ({ browser }) => {
@@ -108,11 +129,13 @@ test("GPS成功時は近い順10停留所に絞り込まれる", async ({ browse
     viewport: { width: 390, height: 844 },
   });
   const page = await context.newPage();
+  const errors = attachErrorCollector(page);
   await page.goto("/");
 
   await expect(page.locator("#nearby-label")).toBeVisible();
   await expect(page.locator("#stop-select option")).toHaveCount(10);
   await expect(page.locator("#status-message")).toBeHidden();
+  expectNoBrowserErrors(errors);
   await context.close();
 });
 
@@ -122,11 +145,46 @@ test("GPS拒否時は全停留所から手動選択できる", async ({ browser 
     viewport: { width: 390, height: 844 },
   });
   const page = await context.newPage();
+  const errors = attachErrorCollector(page);
   await page.goto("/");
 
   await expect(page.locator("#status-message")).toContainText(/位置情報|現在地/);
   await expect(page.locator("#nearby-label")).toBeHidden();
   const count = await page.locator("#stop-select option").count();
   expect(count).toBeGreaterThan(10);
+  expectNoBrowserErrors(errors);
   await context.close();
+});
+
+test("Service Worker v25でオフラインでもextra側91号を利用できる", async ({ context, page }) => {
+  const errors = attachErrorCollector(page);
+  await waitForData(page);
+
+  const swState = await page.evaluate(async () => {
+    const registration = await navigator.serviceWorker.ready;
+    return registration.active?.state ?? null;
+  });
+  expect(swState).toBe("activated");
+
+  // active SWが現在のページを制御する状態にしてからオフラインへ切り替える。
+  await page.reload();
+  await expect(page.locator("#stop-select option").first()).toBeAttached();
+
+  const cacheNames = await page.evaluate(() => caches.keys());
+  expect(cacheNames).toContain("osaka-nextbus-v25");
+
+  await context.setOffline(true);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page.locator("#stop-select option").first()).toBeAttached();
+  await selectRoute(
+    page,
+    "鶴町一丁目-3a81dc",
+    "鶴町一丁目-3a81dc__91号",
+    "ドーム前千代崎方面"
+  );
+  await expect(page.locator("#dest-0")).toHaveText("ドーム前千代崎");
+  await hhmm(page.locator("#time-0"));
+
+  await context.setOffline(false);
+  expectNoBrowserErrors(errors);
 });
