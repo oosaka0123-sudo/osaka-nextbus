@@ -90,7 +90,9 @@ P11には行き先・方面が無いため、`routes.json` は停留所と系統
 
 このため、PWAのService Workerがまだ有効になる前の初回アクセスでも追加時刻表を読み込めます。
 
-`timatable-extra.json` の取得だけに失敗した場合は本体 `timetable.json` をそのまま返し、既存データを壊しません。
+`timetable-extra.json` の取得だけに失敗した場合は本体 `timetable.json` をそのまま返し、既存データを壊しません。
+
+旧Service Workerが一時的に残る更新途中の端末でも、`routeId + direction + destination` で重複排除します。
 
 ## 現在の12系統×方面
 
