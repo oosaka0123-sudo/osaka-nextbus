@@ -12,6 +12,7 @@
 - 時刻表: 現地掲示写真等を目視確認して手動整備
 - 収録済み: **12系統×方面**
 - 未収録系統は架空データを作らず「🚧 時刻表データ準備中」と表示
+- GitHub Actionsでデータ・JavaScriptをpush/PR時に自動検証
 
 ## 収録済み時刻表
 
@@ -72,9 +73,13 @@ data/
 
 ```text
 osaka-nextbus/
+├── AGENTS.md
 ├── index.html
 ├── manifest.json
 ├── sw.js
+├── .github/
+│   └── workflows/
+│       └── validate-data.yml
 ├── css/
 │   └── style.css
 ├── js/
@@ -89,8 +94,28 @@ osaka-nextbus/
 │   ├── timetable-extra.json
 │   └── README.md
 ├── scripts/
+│   ├── validate-data.mjs
+│   ├── convert-ksj-p11.mjs
+│   └── timetable-csv-to-json.mjs
 └── icons/
 ```
+
+## 自動検証
+
+`node scripts/validate-data.mjs` で次を機械検証します。
+
+- 全JSONが正常にparseできる
+- `routes.json` の `stopId` が `stops.json` に存在する
+- 時刻表の `routeId` が `routes.json` に存在する
+- `direction` / `destination` が空でない
+- `weekday` / `saturday` / `holiday` が配列
+- `HH:MM` 形式（24時以降の深夜便も許容）
+- 時刻が昇順
+- 同一曜日内の重複時刻なし
+- 同一 `routeId + direction + destination` の重複なし
+- `metadata.json` のcoverage件数と時刻表エントリ数が一致
+
+GitHub Actionsの `.github/workflows/validate-data.yml` がpush/PR時に自動実行し、上記に加えて `js/timetable-loader.js` / `js/data.js` / `js/app.js` の構文も検査します。
 
 ## Service Worker
 
@@ -107,9 +132,11 @@ osaka-nextbus/
 3. 平日 / 土曜 / 休日を昇順で登録
 4. `metadata.json` に出典・近似補間の有無を記録
 5. `README.md` / `data/README.md` の収録数を更新
-6. アプリ変更時は `sw.js` の `CACHE_VERSION` を更新
-7. 次の3便・曜日切替・終バス後ロールオーバーを確認
-8. Copilot Code Reviewで第三者監査
+6. `node scripts/validate-data.mjs` を実行
+7. アプリ変更時は `sw.js` の `CACHE_VERSION` を更新
+8. 次の3便・曜日切替・終バス後ロールオーバーを確認
+9. GitHub ActionsがPASSすることを確認
+10. Copilot Code Reviewで第三者監査
 
 ## データ方針
 
@@ -123,6 +150,7 @@ osaka-nextbus/
 ## ローカル確認
 
 ```bash
+node scripts/validate-data.mjs
 python3 -m http.server 8000
 ```
 
