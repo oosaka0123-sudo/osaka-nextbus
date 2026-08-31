@@ -9,7 +9,7 @@
  * 必ず値を変更すること。変更しないと、古いバージョンをインストール済みの
  * 端末でキャッシュが入れ替わらず、古い画面が表示され続ける原因になる。
  */
-const CACHE_VERSION = "v19";
+const CACHE_VERSION = "v20";
 const CACHE_NAME = `osaka-nextbus-${CACHE_VERSION}`;
 
 const PRECACHE_URLS = [
