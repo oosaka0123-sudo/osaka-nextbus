@@ -51,8 +51,9 @@ test("鶴町一丁目71号で次の3便が表示される", async ({ page }) => 
   await hhmm(page.locator("#time-1"));
   await hhmm(page.locator("#time-2"));
   await expect(page.locator("#eta-0-seconds")).toHaveText(/^\d{2}$/);
-  await expect(page.locator("#eta-1")).toHaveText(/^あと \d+分\d{2}秒$/);
-  await expect(page.locator("#eta-2")).toHaveText(/^あと \d+分\d{2}秒$/);
+  await expect(page.locator("#eta-1")).toHaveText(/^あと \d+分$/);
+  await expect(page.locator("#eta-2")).toHaveText(/^あと \d+分$/);
+  await expect(page.locator("#locate-btn")).toBeInViewport();
   await expect(page.locator("#pending-message")).toBeHidden();
   expectNoBrowserErrors(errors);
 });
@@ -106,7 +107,7 @@ test("extra側の補正データがbaseより優先される", async ({ page }) 
   expectNoBrowserErrors(errors);
 });
 
-test("秒単位の残り時間と24:07の翌日00:07表示を両立する", async ({ page }) => {
+test("主表示の秒カウントと24:07の翌日00:07表示を両立する", async ({ page }) => {
   const errors = attachErrorCollector(page);
   const fixedNow = new Date("2026-08-31T23:50:40+09:00").getTime();
   await page.addInitScript(({ now }) => {
@@ -134,7 +135,7 @@ test("秒単位の残り時間と24:07の翌日00:07表示を両立する", asyn
   await expect(page.locator("#eta-0")).toHaveText("2");
   await expect(page.locator("#eta-0-seconds")).toHaveText("20");
   await expect(page.locator("#time-1")).toHaveText("00:07");
-  await expect(page.locator("#eta-1")).toHaveText("あと 16分20秒");
+  await expect(page.locator("#eta-1")).toHaveText("あと 16分");
   expectNoBrowserErrors(errors);
 });
 
@@ -171,6 +172,7 @@ test("GPS成功時は近い順10停留所に絞り込まれる", async ({ browse
   await expect(page.locator("#nearby-label")).toBeVisible();
   await expect(page.locator("#stop-select option")).toHaveCount(10);
   await expect(page.locator("#status-message")).toBeHidden();
+  await expect(page.locator("#locate-btn")).toBeInViewport();
   expectNoBrowserErrors(errors);
   await context.close();
 });
@@ -187,13 +189,14 @@ test("GPS拒否時は全停留所から手動選択できる", async ({ browser,
 
   await expect(page.locator("#status-message")).toContainText(/位置情報|現在地/);
   await expect(page.locator("#nearby-label")).toBeHidden();
+  await expect(page.locator("#locate-btn")).toBeInViewport();
   const count = await page.locator("#stop-select option").count();
   expect(count).toBeGreaterThan(10);
   expectNoBrowserErrors(errors);
   await context.close();
 });
 
-test("Service Worker v27でオフラインでもextra側91号を利用できる", async ({ context, page }) => {
+test("Service Worker v28でオフラインでもextra側91号を利用できる", async ({ context, page }) => {
   const errors = attachErrorCollector(page);
   await waitForData(page);
 
@@ -207,7 +210,7 @@ test("Service Worker v27でオフラインでもextra側91号を利用できる"
   await expect(page.locator("#stop-select option").first()).toBeAttached();
 
   const cacheNames = await page.evaluate(() => caches.keys());
-  expect(cacheNames).toContain("osaka-nextbus-v27");
+  expect(cacheNames).toContain("osaka-nextbus-v28");
 
   await context.setOffline(true);
   await page.reload({ waitUntil: "domcontentloaded" });
