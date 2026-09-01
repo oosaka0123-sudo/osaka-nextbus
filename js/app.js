@@ -3,14 +3,14 @@
  * データ取得は必ず BusDataSource (data.js) 経由で行い、
  * ここには仮データや実データの詳細を直接書かない。
  *
- * 選択の流れ: 停留所 → 系統番号 → 方面・行先 → 次のバス3便・あと○分
+ * 選択の流れ: 停留所 → 系統番号 → 方面・行先 → 次のバス3便・あと○分○秒
  */
 (() => {
   "use strict";
 
   const dataSource = BusDataSource;
   const STORAGE_KEY = "osaka-nextbus:selection";
-  const REFRESH_MS = 15000;
+  const REFRESH_MS = 1000;
   const NEARBY_DISPLAY_COUNT = 10; // 現在地取得後、近い順に表示する停留所件数(11件目以降は表示しない)
 
   const els = {
@@ -26,6 +26,7 @@
     upcoming: document.getElementById("upcoming"),
     pendingMessage: document.getElementById("pending-message"),
     eta0: document.getElementById("eta-0"),
+    eta0Seconds: document.getElementById("eta-0-seconds"),
     time0: document.getElementById("time-0"),
     dest0: document.getElementById("dest-0"),
     time1: document.getElementById("time-1"),
@@ -96,8 +97,17 @@
     return TokyoTime.formatHHMM(date);
   }
 
-  function etaMinutes(date, now) {
-    return Math.max(0, Math.round((date.getTime() - now.getTime()) / 60000));
+  function etaParts(date, now) {
+    const totalSeconds = Math.max(0, Math.ceil((date.getTime() - now.getTime()) / 1000));
+    return {
+      minutes: Math.floor(totalSeconds / 60),
+      seconds: totalSeconds % 60,
+    };
+  }
+
+  function formatEta(date, now) {
+    const eta = etaParts(date, now);
+    return `あと ${eta.minutes}分${String(eta.seconds).padStart(2, "0")}秒`;
   }
 
   /**
@@ -175,17 +185,19 @@
     els.pendingMessage.hidden = true;
 
     if (departures[0]) {
-      els.eta0.textContent = etaMinutes(departures[0].time, now);
+      const eta = etaParts(departures[0].time, now);
+      els.eta0.textContent = eta.minutes;
+      els.eta0Seconds.textContent = String(eta.seconds).padStart(2, "0");
       els.time0.textContent = formatTime(departures[0].time);
       els.dest0.textContent = direction.destination;
     }
     if (departures[1]) {
       els.time1.textContent = formatTime(departures[1].time);
-      els.eta1.textContent = `あと ${etaMinutes(departures[1].time, now)}分`;
+      els.eta1.textContent = formatEta(departures[1].time, now);
     }
     if (departures[2]) {
       els.time2.textContent = formatTime(departures[2].time);
-      els.eta2.textContent = `あと ${etaMinutes(departures[2].time, now)}分`;
+      els.eta2.textContent = formatEta(departures[2].time, now);
     }
   }
 
