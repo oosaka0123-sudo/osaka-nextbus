@@ -123,17 +123,20 @@ body {
   background-position: right 5px top 55%, right 0px top 55%;
   background-size: 6px 6px, 6px 6px;
   background-repeat: no-repeat;
-  /* 停留所名+距離のように長い文字列でも、狭い画面でレイアウトが崩れず省略記号で収まるように */
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.selector select:disabled {
+  color: var(--color-text-dim);
+  opacity: 0.75;
 }
 
 .selector select:focus {
   outline: none;
 }
 
-/* デフォルトのoutlineを消す代わりに、キーボード操作時にも分かる枠線を親要素に付ける */
 .selector:focus-within {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 2px rgba(76, 141, 255, 0.35);
@@ -155,7 +158,7 @@ body {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 20px;
-  padding: 24px 16px;
+  padding: 20px 16px;
   gap: 14px;
   text-align: center;
 }
@@ -167,6 +170,81 @@ body {
   letter-spacing: 0.05em;
 }
 
+.overview-board {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.overview-board[hidden] {
+  display: none;
+}
+
+.overview-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+  text-align: left;
+}
+
+.overview-item {
+  padding: 12px 2px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.overview-item:last-child {
+  border-bottom: none;
+}
+
+.overview-item-top {
+  display: grid;
+  grid-template-columns: minmax(58px, auto) 72px 1fr;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.overview-route {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 54px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(76, 141, 255, 0.16);
+  color: var(--color-primary-strong);
+  font-size: 0.95rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.overview-time {
+  color: var(--color-primary);
+  font-size: 1.15rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.overview-eta {
+  justify-self: end;
+  color: var(--color-text-dim);
+  font-size: 0.88rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.overview-destination {
+  margin: 7px 0 0 66px;
+  color: var(--color-text);
+  font-size: 0.96rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
 .next-bus {
   display: flex;
   flex-direction: column;
@@ -174,8 +252,6 @@ body {
   gap: 2px;
 }
 
-/* .next-bus/.upcoming の display:flex は [hidden] の既定 display:none と詳細度が同じため、
-   後勝ちでhidden属性が無効化されてしまう。属性セレクタを組み合わせて確実に上書きする。 */
 .next-bus[hidden],
 .upcoming[hidden] {
   display: none;
@@ -306,6 +382,21 @@ body {
 .locate-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+@media (max-width: 380px) {
+  .overview-item-top {
+    grid-template-columns: minmax(54px, auto) 64px 1fr;
+    gap: 6px;
+  }
+
+  .overview-destination {
+    margin-left: 60px;
+  }
+
+  .overview-eta {
+    font-size: 0.8rem;
+  }
 }
 
 @media (min-width: 420px) {
