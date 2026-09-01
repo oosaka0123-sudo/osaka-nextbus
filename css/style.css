@@ -188,6 +188,7 @@ body {
   line-height: 1;
   color: var(--color-primary-strong);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .next-bus-eta .unit {
@@ -195,6 +196,13 @@ body {
   font-weight: 700;
   margin-left: 4px;
   color: var(--color-text-dim);
+}
+
+.next-bus-eta .seconds {
+  font-size: 2.6rem;
+  font-weight: 800;
+  margin-left: 8px;
+  color: var(--color-primary-strong);
 }
 
 .next-bus-eta .prefix {
@@ -252,6 +260,7 @@ body {
 
 .upcoming-eta {
   color: var(--color-text-dim);
+  font-variant-numeric: tabular-nums;
 }
 
 .pending-message {
@@ -295,5 +304,9 @@ body {
 @media (min-width: 420px) {
   .next-bus-eta {
     font-size: 5rem;
+  }
+
+  .next-bus-eta .seconds {
+    font-size: 3rem;
   }
 }
