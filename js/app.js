@@ -3,7 +3,8 @@
  * データ取得は必ず BusDataSource (data.js) 経由で行い、
  * ここには仮データや実データの詳細を直接書かない。
  *
- * 選択の流れ: 停留所 → 系統番号 → 方面・行先 → 次のバス3便・あと○分○秒
+ * 選択の流れ: 停留所 → 系統番号 → 方面・行先 → 次のバス3便
+ * 主表示の次便だけ残り時間を分・秒で表示し、後続2便は分のみ表示する。
  */
 (() => {
   "use strict";
@@ -105,9 +106,8 @@
     };
   }
 
-  function formatEta(date, now) {
-    const eta = etaParts(date, now);
-    return `あと ${eta.minutes}分${String(eta.seconds).padStart(2, "0")}秒`;
+  function formatEtaMinutes(date, now) {
+    return `あと ${etaParts(date, now).minutes}分`;
   }
 
   /**
@@ -193,11 +193,11 @@
     }
     if (departures[1]) {
       els.time1.textContent = formatTime(departures[1].time);
-      els.eta1.textContent = formatEta(departures[1].time, now);
+      els.eta1.textContent = formatEtaMinutes(departures[1].time, now);
     }
     if (departures[2]) {
       els.time2.textContent = formatTime(departures[2].time);
-      els.eta2.textContent = formatEta(departures[2].time, now);
+      els.eta2.textContent = formatEtaMinutes(departures[2].time, now);
     }
   }
 
