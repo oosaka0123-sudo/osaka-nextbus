@@ -43,24 +43,29 @@
   <p id="status-message" class="status-message" role="status" aria-live="polite" hidden></p>
 
   <main class="board" id="board">
-    <p class="board-label">次のバス</p>
+    <section id="overview-board" class="overview-board">
+      <p id="overview-label" class="board-label">早く来る順 5件</p>
+      <ol id="overview-list" class="overview-list"></ol>
+    </section>
 
-    <div class="next-bus" id="next-bus">
+    <p id="detail-label" class="board-label" hidden>次のバス</p>
+
+    <div class="next-bus" id="next-bus" hidden>
       <p class="next-bus-eta"><span class="prefix">あと</span><span id="eta-0">--</span><span class="unit">分</span><span id="eta-0-seconds" class="seconds">--</span><span class="unit">秒</span></p>
       <p class="next-bus-time" id="time-0">--:--</p>
       <p class="next-bus-dest" id="dest-0">-</p>
     </div>
 
-    <ul class="upcoming" id="upcoming">
+    <ul class="upcoming" id="upcoming" hidden>
       <li class="upcoming-item">
         <span class="upcoming-label">次</span>
         <span class="upcoming-time" id="time-1">--:--</span>
-        <span class="upcoming-eta" id="eta-1">あと --分--秒</span>
+        <span class="upcoming-eta" id="eta-1">あと --分</span>
       </li>
       <li class="upcoming-item">
         <span class="upcoming-label">その次</span>
         <span class="upcoming-time" id="time-2">--:--</span>
-        <span class="upcoming-eta" id="eta-2">あと --分--秒</span>
+        <span class="upcoming-eta" id="eta-2">あと --分</span>
       </li>
     </ul>
 
