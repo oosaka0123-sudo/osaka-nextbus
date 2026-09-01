@@ -36,6 +36,42 @@ function hhmm(locator) {
   return expect(locator).toHaveText(/^\d{2}:\d{2}$/);
 }
 
+test("号数未選択では早く来る順5件に号数・時刻・行き先が出る", async ({ page }) => {
+  const errors = attachErrorCollector(page);
+  const fixedNow = new Date("2026-09-01T10:00:00+09:00").getTime();
+  await page.addInitScript(({ now }) => {
+    const OriginalDate = Date;
+    class MockDate extends OriginalDate {
+      constructor(...args) {
+        super(...(args.length ? args : [now]));
+      }
+      static now() {
+        return now;
+      }
+    }
+    window.Date = MockDate;
+  }, { now: fixedNow });
+
+  await waitForData(page);
+  await page.selectOption("#stop-select", "鶴町一丁目-3a81dc");
+
+  await expect(page.locator("#route-select")).toHaveValue("");
+  await expect(page.locator("#direction-select")).toHaveValue("");
+  await expect(page.locator("#direction-select")).toBeDisabled();
+  await expect(page.locator("#overview-board")).toBeVisible();
+  await expect(page.locator("#overview-list .overview-item")).toHaveCount(5);
+
+  const items = page.locator("#overview-list .overview-item");
+  for (let i = 0; i < 5; i += 1) {
+    const item = items.nth(i);
+    await expect(item.locator(".overview-route")).not.toHaveText("");
+    await expect(item.locator(".overview-time")).toHaveText(/^\d{2}:\d{2}$/);
+    await expect(item.locator(".overview-destination")).not.toHaveText("");
+    await expect(item.locator(".overview-eta")).toHaveText(/^あと \d+分$/);
+  }
+  expectNoBrowserErrors(errors);
+});
+
 test("鶴町一丁目71号で次の3便が表示される", async ({ page }) => {
   const errors = attachErrorCollector(page);
   await waitForData(page);
@@ -46,6 +82,7 @@ test("鶴町一丁目71号で次の3便が表示される", async ({ page }) => 
     "なんば方面"
   );
 
+  await expect(page.locator("#overview-board")).toBeHidden();
   await expect(page.locator("#dest-0")).toHaveText("なんば");
   await hhmm(page.locator("#time-0"));
   await hhmm(page.locator("#time-1"));
@@ -139,7 +176,7 @@ test("主表示の秒カウントと24:07の翌日00:07表示を両立する", a
   expectNoBrowserErrors(errors);
 });
 
-test("選択した停留所・系統・方面が再読み込み後も復元される", async ({ page }) => {
+test("再読み込み後は停留所だけ復元し、号数・方面は未選択に戻る", async ({ page }) => {
   const errors = attachErrorCollector(page);
   await waitForData(page);
   await selectRoute(
@@ -153,8 +190,9 @@ test("選択した停留所・系統・方面が再読み込み後も復元さ�
   await page.reload();
 
   await expect(page.locator("#stop-select")).toHaveValue("鶴町一丁目-3a81dc");
-  await expect(page.locator("#route-select")).toHaveValue("鶴町一丁目-3a81dc__90号");
-  await expect(page.locator("#dest-0")).toHaveText("野田阪神前");
+  await expect(page.locator("#route-select")).toHaveValue("");
+  await expect(page.locator("#direction-select")).toHaveValue("");
+  await expect(page.locator("#overview-board")).toBeVisible();
   expectNoBrowserErrors(errors);
 });
 
@@ -171,6 +209,7 @@ test("GPS成功時は近い順10停留所に絞り込まれる", async ({ browse
 
   await expect(page.locator("#nearby-label")).toBeVisible();
   await expect(page.locator("#stop-select option")).toHaveCount(10);
+  await expect(page.locator("#route-select")).toHaveValue("");
   await expect(page.locator("#status-message")).toBeHidden();
   await expect(page.locator("#locate-btn")).toBeInViewport();
   expectNoBrowserErrors(errors);
@@ -196,7 +235,7 @@ test("GPS拒否時は全停留所から手動選択できる", async ({ browser,
   await context.close();
 });
 
-test("Service Worker v28でオフラインでもextra側91号を利用できる", async ({ context, page }) => {
+test("Service Worker v29でオフラインでもextra側91号を利用できる", async ({ context, page }) => {
   const errors = attachErrorCollector(page);
   await waitForData(page);
 
@@ -210,7 +249,7 @@ test("Service Worker v28でオフラインでもextra側91号を利用できる"
   await expect(page.locator("#stop-select option").first()).toBeAttached();
 
   const cacheNames = await page.evaluate(() => caches.keys());
-  expect(cacheNames).toContain("osaka-nextbus-v28");
+  expect(cacheNames).toContain("osaka-nextbus-v29");
 
   await context.setOffline(true);
   await page.reload({ waitUntil: "domcontentloaded" });
