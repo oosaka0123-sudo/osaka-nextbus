@@ -1,17 +1,18 @@
 """
 collector/bus_vision/selectors.py
 ---------------------------------------------------------
-diagramDetail.html などの保存済みHTMLを解析する際に使う
-「どこを見るか」を表す設定。
+保存済みBus-Vision HTMLを解析する際に使う「どこを見るか」の設定。
 
 【最重要】実際のBus-Vision HTMLのDOM selectorは未確認である。
 このモジュールは実サイト向けの既定値を一切提供しない。
 Production selector は、実ページの最小HTML構造を確認した後にだけ
 呼び出し側で明示的に組み立てる。
 
+ページの意味は公開検索で確認できた範囲だけ分離して扱う:
+- diagram.html: 停留所/のりば時刻表 + 便詳細リンク列挙
+- diagramDetail.html: 1便 + 複数停留所時刻
+
 既存 SelectorConfig は初期プロトタイプ互換のため残している。
-公開検索で確認できた diagramDetail.html の意味は「1便の系統・行先と
-複数停留所の時刻」であるため、新規実装は TripDetailSelectorConfig を使う。
 """
 from dataclasses import dataclass
 from typing import Optional, Tuple
@@ -34,6 +35,24 @@ class SelectorConfig:
     destination: ElementSpec
     time_cell: ElementSpec
     calendar_label: Optional[ElementSpec] = None
+
+
+@dataclass(frozen=True)
+class StopTimetableSelectorConfig:
+    """`diagram.html` 停留所時刻表の意味だけを表すSelector契約。
+
+    公開検索では、停留所/のりば単位の時刻表から各発車時刻を選ぶと
+    その便の詳細へ進めることを確認している。この設定はその役割だけを
+    モデル化し、実サイトのclass名・id名などは一切決め打ちしない。
+
+    - departure_item: 1便/1発車分として繰り返される親要素
+    - time_cell:      departure_item 内の発車時刻要素
+    - detail_link:    departure_item 内の便詳細リンク要素。hrefを必須とする
+    """
+
+    departure_item: ElementSpec
+    time_cell: ElementSpec
+    detail_link: ElementSpec
 
 
 @dataclass(frozen=True)
