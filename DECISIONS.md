@@ -76,4 +76,17 @@
 - **Status**: Accepted
 - **Context**: Issue起点ルールを導入する前には、そのルール自体を置くためのIssueプロトコルが存在しない。
 - **Decision**: `chore/ai-dev-os-v1-bootstrap`ブランチでAGENTS.md / DECISIONS.md / RUNBOOK.mdを整備する1回だけIssueなしの初期化を認める。
-- **Consequence**: Bootstrap PRマージ後の最初の通常タスクをIssue #1として開始し、それ以降はIssue起点とする。
+- **Consequence**: Bootstrap PRマージ後はすべてIssue起点とする。GitHubではIssueとPRが同じ番号系列を共有するため、最初の通常Issue番号が1とは限らない。
+
+## ADR-008: Gemini Heavy Analyzerは手動dispatchから開始する
+
+- **Status**: Accepted
+- **Context**: GeminiをIssue解析に使いたいが、Phase 1でIssueオープン時の全自動起動やコード書き込みまで許可すると、意図しない実行・コスト・権限範囲が広がる。
+- **Decision**:
+  - Google公式`google-github-actions/run-gemini-cli`をGitHub Actionsから使用する。
+  - Phase 1は`workflow_dispatch`でIssue番号を明示して起動する。
+  - 認証はGitHub Actions Secret `GEMINI_API_KEY`のみを使い、値をコード・Issue・ログへ記録しない。
+  - Geminiの権限は解析用途に限定し、リポジトリcontentsはread、Issueへの検証済み結果コメントのみwriteを許可する。
+  - Gemini出力は必須見出しを機械検査し、プロトコル不一致ならIssueへ流さない。
+  - Action参照は可能な限りリリースコミットSHAへ固定する。
+- **Consequence**: 最初は人間/PMがIssue番号を指定する1操作が必要だが、誤爆を抑えながらトークン非依存のGoogle解析基盤を得られる。安定後にラベル/コメント起動へ拡張できる。
