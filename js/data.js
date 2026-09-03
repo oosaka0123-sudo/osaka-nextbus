@@ -23,6 +23,8 @@
  *     ダミーの pending 方面を1件返す。
  *   ・ある方面に、今日以降のカレンダー種別(平日/土曜/休日)に該当する時刻が
  *     一件も登録されていない場合、getNextDepartures() は空配列を返す。
+ *   ・verifiedCalendars が指定されたentryでは、未確認曜日に到達した時点で
+ *     それより先の曜日へ飛ばず探索を停止する。未確認を運休扱いしない。
  *   いずれの場合も、UI側は「時刻表データ準備中」を表示し、架空の時刻・
  *   行き先は一切生成しない。
  *
@@ -30,6 +32,9 @@
  *   1つの (系統, 方面, 行先) の組み合わせにつき1エントリとし、その中に
  *   平日(weekday) / 土曜(saturday) / 休日(holiday) それぞれの発車時刻
  *   ("HH:MM" の配列、当日 05:00〜翌日未明想定で24:00以降の表記も可) を持つ。
+ *   optional の verifiedCalendars を省略した既存entryは3曜日すべて確認済みとして
+ *   従来互換で扱う。指定する場合は、Evidence確認済み曜日だけを列挙し、未確認曜日の
+ *   配列は空にする。
  *   同じ系統番号でも上り/下りや行先違いが複数存在する場合は、
  *   timetable.json に複数エントリを追加すればよい。
  *   例:
@@ -38,8 +43,9 @@
  *       "direction": "守口車庫前方面",
  *       "destination": "守口車庫前行",
  *       "weekday":  ["05:31", "05:52", "24:10", "25:05"],
- *       "saturday": ["05:40", "06:05"],
- *       "holiday":  ["05:50", "06:15"]
+ *       "saturday": [],
+ *       "holiday":  [],
+ *       "verifiedCalendars": ["weekday"]
  *     }
  *   24:10 / 25:05 のように24時を超える表記は「前日(平日)ダイヤの深夜便」を
  *   意味する(実際の時刻としては翌日の00:10 / 01:05になる)。
@@ -86,6 +92,7 @@ const DEFAULT_DEMO_METADATA = {
 };
 
 const SEARCH_DAYS = 8; // 平日/土曜/休日いずれの周期でも1回は巡り合う日数
+const CALENDAR_TYPES = ["weekday", "saturday", "holiday"];
 
 /**
  * 大阪シティバスは日本国内のサービスのため、端末のシステムタイムゾーンに関わらず
@@ -299,7 +306,7 @@ const DEMO_ROUTES = [
   { id: "osakaeki-1", stopId: "osakaeki", label: "3号", destination: "3号" },
   { id: "namba-1", stopId: "namba", label: "4号", destination: "4号" },
   { id: "abenobashi-1", stopId: "abenobashi", label: "5号", destination: "5号" },
-  { id: "shinsaibashi-1", stopId: "shinsaibashi", label: "6号", destination: "6号" },
+  { id: "shinsaibashi", stopId: "shinsaibashi", label: "6号", destination: "6号" },
 ];
 
 const DEMO_DIRECTION_DEFS = [
@@ -322,7 +329,15 @@ const DEMO_DIRECTIONS = DEMO_DIRECTION_DEFS.map(({ intervalMin, phaseMin, ...d }
 const DEMO_TIMETABLE_BY_DIRECTION_ID = new Map(
   DEMO_DIRECTION_DEFS.map((d) => {
     const times = generateDailyTimes(d.intervalMin, d.phaseMin);
-    return [d.id, { weekday: times, saturday: times, holiday: times }];
+    return [
+      d.id,
+      {
+        weekday: times,
+        saturday: times,
+        holiday: times,
+        verifiedCalendars: new Set(CALENDAR_TYPES),
+      },
+    ];
   })
 );
 
@@ -344,6 +359,11 @@ function groupRoutesByStop(routes) {
 function sanitizeTimes(arr) {
   if (!Array.isArray(arr)) return [];
   return arr.filter((t) => /^\d{1,2}:\d{2}$/.test(t));
+}
+
+function normalizeVerifiedCalendars(entry) {
+  if (!Array.isArray(entry.verifiedCalendars)) return new Set(CALENDAR_TYPES);
+  return new Set(entry.verifiedCalendars.filter((calendar) => CALENDAR_TYPES.includes(calendar)));
 }
 
 /**
@@ -372,6 +392,7 @@ function buildTimetableIndex(entries) {
       weekday: sanitizeTimes(entry.weekday),
       saturday: sanitizeTimes(entry.saturday),
       holiday: sanitizeTimes(entry.holiday),
+      verifiedCalendars: normalizeVerifiedCalendars(entry),
     });
   });
 
@@ -517,8 +538,8 @@ const BusDataSource = {
   /**
    * 指定方面の「次発」以降の便を count 件返す。
    * 平日/土曜/休日の判定は日本時間の暦日ごとに行い、24:00を超える時刻表記
-   * (深夜0時をまたぐ便)にも対応する。該当する時刻表データが無い場合は、
-   * 架空の時刻を生成せず必ず空配列を返す。
+   * (深夜0時をまたぐ便)にも対応する。verifiedCalendarsで未確認の暦日に到達した
+   * 場合は、その日を飛ばして先の曜日を検索せずfail closedで探索を停止する。
    */
   getNextDepartures(directionId, fromDate, count) {
     const timesByCalendar = this._timetableByDirectionId.get(directionId);
@@ -526,11 +547,13 @@ const BusDataSource = {
 
     const results = [];
     const dayStartEpoch = TokyoTime.midnightEpoch(fromDate);
+    const verifiedCalendars = timesByCalendar.verifiedCalendars || new Set(CALENDAR_TYPES);
 
     for (let dayOffset = 0; dayOffset < SEARCH_DAYS && results.length < count; dayOffset++) {
       const baseEpoch = dayStartEpoch + dayOffset * 86400000;
       const { year, month, day } = TokyoTime.parts(new Date(baseEpoch));
       const calendarType = JapaneseCalendar.calendarTypeFor(year, month, day);
+      if (!verifiedCalendars.has(calendarType)) break;
       const times = timesByCalendar[calendarType] || [];
 
       for (const hhmm of times) {
