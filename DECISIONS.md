@@ -88,7 +88,35 @@
   - `workflow_dispatch`によるIssue番号指定も、復旧・手動再実行用の代替経路として残す。
   - Issueオープンだけでは自動起動しない。Geminiによるコード書き込み・自動マージもPhase 1では許可しない。
   - 認証はGitHub Actions Secret `GEMINI_API_KEY`のみを使い、値をコード・Issue・ログへ記録しない。
-  - Geminiの権限は解析用途に限定し、リポジトリcontentsはread、Issueへの検証済み結果コメントのみwriteを許可する。
+  - Issue解析Geminiの権限は解析用途に限定し、リポジトリcontentsはread、Issueへの検証済み結果コメントのみwriteを許可する。
   - Gemini出力は必須見出しを機械検査し、プロトコル不一致ならIssueへ流さない。
   - Action参照はリリースコミットSHAへ固定する。
 - **Consequence**: Secret設定後はPMがIssueラベルを遷移させるだけでGemini解析を開始でき、チャットUIや人間のActions操作に依存しない。誤爆を抑えつつGoogle解析基盤を継続運用できる。
+
+## ADR-009: CI失敗Gemini解析はread-only Artifact handoffにする
+
+- **Status**: Accepted
+- **Context**: `workflow_run`からPR conversationへGemini解析結果を書き込む方式は、GraphQL/RESTともGitHub integration境界でHTTP 403になった。同じ書き込み方式を3回試行したため3-strikeで打ち切った。一方、Gemini解析・構造検証・Secret-like pattern検査自体は正常動作した。
+- **Decision**:
+  - `.github/workflows/gemini-ci-failure.yml`は`actions: read` + `contents: read`のみを持つ。
+  - 失敗CIログはサニタイズし、Geminiはread-onlyローカル解析だけを行う。
+  - `OBSERVED / EVIDENCE / HYPOTHESIS / CONFIDENCE / NEXT / RISK`の必須見出しとSecret-like patternを機械検査する。
+  - 合格結果をActions Artifact `gemini-ci-analysis-pr-<PR>-<HEAD_SHA>`として保存する。
+  - Artifactには`analysis.md`と非機密の`metadata.json`だけを含め、PMがAPIから回収する。
+  - 同じPR/SHAのArtifactが存在する場合は再解析を抑止する。
+- **Consequence**: CI失敗解析GeminiはGitHubへのコメント・コード変更権限を持たず、トークン節約と自動診断を維持しながら権限面を最小化できる。PR #21の意図的失敗E2EでArtifact生成・API回収まで確認済み。
+
+## ADR-010: Bus-Visionページ種別を分離してオフラインParserを組み立てる
+
+- **Status**: Accepted
+- **Context**: 初期prototypeは`diagramDetail.html`を停留所中心時刻表と仮定していたが、公開検索で確認できた実例ではページの意味が異なった。
+- **Decision**:
+  - `diagram.html` = 停留所/のりば単位の時刻表・便詳細リンク列挙ページ。
+  - `diagramDetail.html` = 1便の系統/行先 + 複数停留所の通過/発車時刻ページ。
+  - `stopCd / poleCd / strLineList / lang`は`diagram.html`側のOBSERVED済みquery keyとして扱う。
+  - `corpCd / dateDivCd / diaCd / lang / lineCd / opeYmd / revYmd / routeCd / timetableDateDivCd / updownCd`は`diagramDetail.html`側のOBSERVED済みquery keyとして扱う。
+  - Production DOM selectorは実構造未確認の間は既定値を置かない。
+  - 現在のオフライン流れは `parse_stop_timetable()` → 保存済みdetail HTML lookup → `parse_trip_detail()` → target stop `DepartureRecord`。
+  - 停留所ページと便詳細の時刻不一致、detail HTML欠落、target stop 0件/複数件はfail closedする。
+  - `PERMISSION_GRANTED = False`を維持し、実ネットワーク収集を有効化しない。
+- **Consequence**: 実ID/実HTMLを後から差し込める一方、未確認selectorやIDを推測して本番データへ混入させない。2026-09-03時点でcollector unit tests 76件PASS。
