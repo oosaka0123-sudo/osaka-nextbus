@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "stopName": "鶴町三丁目",
+      "directionNote": "市内向き（大阪駅前・なんば・あべの橋・野田阪神前・ドーム前千代崎・天保山方面）",
+      "sourceUrl": "https://oc.bus-vision.jp/osakacitybus/view/diagram.html?lang=0&poleCd=80&stopCd=811&strLineList=71-1-1_87-1-1",
+      "stopCd": "811",
+      "poleCd": "80",
+      "strLineList": "71-1-1_87-1-1",
+      "lang": "0",
+      "observedAt": "2026-09-03",
+      "evidenceNote": "公開Bus-Vision時刻表で確認。Issue #37 / PR #38で87号なんば行き07:35便との時刻一致を回帰確認済み。"
+    }
+  ]
+}
