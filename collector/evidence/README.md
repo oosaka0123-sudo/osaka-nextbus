@@ -25,6 +25,24 @@ strLineList=71-1-1_87-1-1
 
 鶴町一丁目の `stopCd` は Issue #39 が解決するまで未確認です。隣接番号から考えられる値があってもRegistryへ登録してはいけません。
 
+## Unverified evidence intake
+
+通常ブラウザなどで新しい公開 `diagram.html` URLを取得できた時は、Registryへ直接書く前に未検証proposalを作れます。
+
+```bash
+python3 -m collector.propose_stop_evidence \
+  --url 'EXPLICIT_PUBLIC_DIAGRAM_URL' \
+  --stop-name '停留所名' \
+  --direction-note '画面で見えた方向・のりば' \
+  --observed-at '2026-09-03' \
+  --evidence-note 'URLバーと停留所名を同一公開画面で確認する前のメモ' \
+  --output /tmp/stop-evidence-proposal.json
+```
+
+このCLIはHTTPS公式host/pathとURL queryの `stopCd / poleCd / strLineList / lang` だけを機械検証します。**停留所名や方向とURLが意味的に一致していることは証明しません。** 出力は必ず `proposalState: unverified` / `requiresHumanConfirmation: true` で、Verified Registryを変更しません。
+
+既存Registryと同一URLまたは同一 `stopCd/poleCd/strLineList` identityはduplicateとして拒否します。proposal生成後、通常公開画面で停留所名・方向とURLを同時に確認し、その証拠をIssue/PRへ記録してからRegistryへ昇格します。
+
 ## Calendar code registry
 
 `calendar_codes.json` は確認済み `diagramDetail.html` の `dateDivCd` とアプリ側calendar名の対応だけを保持します。
