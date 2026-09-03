@@ -130,7 +130,7 @@ def convert(records, stop_index: dict, route_index: dict, date_div_cd_map: dict)
         if calendar is None:
             errors.append(
                 f"{loc}: service(\"{rec['service']}\")に対応する平日/土曜/休日の"
-                "verified mappingがありません(推測禁止のため停止)"
+                "verifiedマッピングがありません(推測禁止のため停止)"
             )
             continue
 
