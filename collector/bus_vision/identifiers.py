@@ -4,13 +4,15 @@ collector/bus_vision/identifiers.py
 Bus-Vision URL文字列のquery parameterを解析する純粋関数。
 ネットワークアクセスは一切行わない。
 
-初期プロトタイプで想定した stopCd / poleCd / strLineList は、
-実際の `diagramDetail.html` 公開インデックスURLでは確認できていないため
-legacy APIとして残すだけにする。
+公開検索で確認できたページ種別を分けて扱う:
 
-公開検索で実在を確認できた `diagramDetail.html` では次のキーが使われている:
-corpCd, dateDivCd, diaCd, lang, lineCd, opeYmd, revYmd, routeCd,
-timetableDateDivCd, updownCd
+- `diagram.html`
+  停留所/のりば単位の時刻表ページ。公開実例で
+  `stopCd`, `poleCd`, `strLineList`, `lang` を確認済み。
+- `diagramDetail.html`
+  1便 + 複数停留所時刻の便詳細ページ。公開実例で
+  `corpCd`, `dateDivCd`, `diaCd`, `lang`, `lineCd`, `opeYmd`, `revYmd`,
+  `routeCd`, `timetableDateDivCd`, `updownCd` を確認済み。
 
 値の意味や必須性まで未確認のものは推測しない。
 """
@@ -26,7 +28,12 @@ LEGACY_QUERY_KEYS = ("stopCd", "poleCd", "strLineList", "dateDivCd")
 
 @dataclass(frozen=True)
 class PageIdentifiers:
-    """初期プロトタイプ互換。実diagramDetail URLの正本モデルではない。"""
+    """初期プロトタイプ互換の汎用モデル。
+
+    `stopCd / poleCd / strLineList` 自体は現在 `diagram.html` の公開実例で
+    確認済みだが、このlegacy型は `dateDivCd` も混在するため正本モデルには
+    しない。新規コードはページ種別ごとの明示モデルを使う。
+    """
 
     stop_cd: Optional[str]
     pole_cd: Optional[str]
@@ -46,6 +53,45 @@ def extract_query_identifiers(url: str) -> PageIdentifiers:
         pole_cd=values["poleCd"],
         str_line_list=values["strLineList"],
         date_div_cd=values["dateDivCd"],
+    )
+
+
+# ---- Observed diagram.html stop timetable API ----------------------------
+
+STOP_TIMETABLE_QUERY_KEYS = ("stopCd", "poleCd", "strLineList", "lang")
+
+
+@dataclass(frozen=True)
+class StopTimetableIdentifiers:
+    """公開 `diagram.html` URLで確認できた停留所時刻表query値。
+
+    すべて Optional とし、URLに無い値は推測で補完しない。
+    `strLineList` の内部書式の意味もこの層では解釈しない。
+    """
+
+    stop_cd: Optional[str]
+    pole_cd: Optional[str]
+    str_line_list: Optional[str]
+    lang: Optional[str]
+
+    def has_stop_identity(self) -> bool:
+        """公開実例で停留所時刻表を識別している中核値が揃うかを見る。"""
+        return all((self.stop_cd, self.pole_cd, self.str_line_list))
+
+
+def extract_stop_timetable_identifiers(url: str) -> StopTimetableIdentifiers:
+    """公開 `diagram.html` でOBSERVED済みのquery keyだけを抽出する。"""
+    query = parse_qs(urlparse(url).query)
+
+    def first(key: str) -> Optional[str]:
+        values = query.get(key)
+        return values[0] if values else None
+
+    return StopTimetableIdentifiers(
+        stop_cd=first("stopCd"),
+        pole_cd=first("poleCd"),
+        str_line_list=first("strLineList"),
+        lang=first("lang"),
     )
 
 
