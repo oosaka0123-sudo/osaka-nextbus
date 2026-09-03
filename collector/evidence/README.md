@@ -70,11 +70,14 @@ python3 -m collector.propose_stop_evidence \
 ```text
 11 -> weekday
 13 -> saturday
+12 -> holiday
 ```
 
-根拠URLは `collector/tests/test_bus_vision_trip_detail.py` に公開検索由来の `WEEKDAY_URL` / `SATURDAY_URL` として既に回帰固定されているものと同一です。`calendar_evidence.py` が公式HTTPS host/pathとURL中の`dateDivCd`完全一致、calendar/code/source URLの重複を検証します。
+`weekday=11` と `saturday=13` の根拠URLは `collector/tests/test_bus_vision_trip_detail.py` に公開検索由来の `WEEKDAY_URL` / `SATURDAY_URL` として回帰固定済みです。
 
-**holiday codeは現在未登録です。** 未確認コード（例: 12）を「たぶん休日」と補完せず、CSV変換時もfail closedします。
+`holiday=12` は Issue #68 で、公式Bus-Visionの 2026-03-08(日) 80号あべの橋行き便詳細URLに `dateDivCd=12` が含まれ、画面日付も日曜日であることを確認して登録しました。プロジェクト側 `js/data.js` は日曜日および日本の祝日を `holiday` bucketとして扱います。
+
+`calendar_evidence.py` は公式HTTPS host/pathとURL中の `dateDivCd` 完全一致、calendar/code/source URLの重複を検証します。未確認コードを推測で補完せず、Registry外の値は引き続きfail closedします。
 
 ## Registry追加手順
 
