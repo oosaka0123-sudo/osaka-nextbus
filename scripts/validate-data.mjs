@@ -83,11 +83,37 @@ function validateTimetableEntry(entry, index, source, routeIds) {
     fail(`${prefix}: destination が空です`);
   }
 
+  let verifiedCalendars = new Set(calendars);
+  if (Object.hasOwn(entry, "verifiedCalendars")) {
+    if (!Array.isArray(entry.verifiedCalendars)) {
+      fail(`${prefix}.verifiedCalendars: 配列ではありません`);
+      verifiedCalendars = new Set();
+    } else {
+      verifiedCalendars = new Set();
+      for (let i = 0; i < entry.verifiedCalendars.length; i += 1) {
+        const calendar = entry.verifiedCalendars[i];
+        if (typeof calendar !== "string" || !calendars.includes(calendar)) {
+          fail(`${prefix}.verifiedCalendars[${i}]: 未知の曜日区分です: ${calendar}`);
+          continue;
+        }
+        if (verifiedCalendars.has(calendar)) {
+          fail(`${prefix}.verifiedCalendars: 重複があります: ${calendar}`);
+          continue;
+        }
+        verifiedCalendars.add(calendar);
+      }
+    }
+  }
+
   for (const calendar of calendars) {
     const values = entry[calendar];
     if (!Array.isArray(values)) {
       fail(`${prefix}.${calendar}: 配列ではありません`);
       continue;
+    }
+
+    if (!verifiedCalendars.has(calendar) && values.length > 0) {
+      fail(`${prefix}.${calendar}: 未確認曜日なのに時刻が登録されています`);
     }
 
     const seen = new Set();
