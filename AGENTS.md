@@ -36,10 +36,17 @@ GPSで近い停留所を表示し、初期状態では号数・方面を未選�
 - 次の作業、例外、ブロック解除を判断する。
 
 ### Gemini — Heavy Analyzer
-- 公開HTML/PDFの巨大コンテキスト解析、長いログ解析、外部仕様調査を担当する。
-- 解析結果はIssueコメントへ短く構造化して残す。
+- Issue単位の大規模解析・長いログ解析を担当する。
+- Issue解析では`agent:gemini` + `status:doing`を制御トリガーとし、結果をIssueへ短く構造化して残す。
+- 外部Web取得が不要な案件では、GitHubに記録済みの証拠とリポジトリだけを読む。取得不能な情報を創作しない。
 - 第三者HTML全文や巨大ダンプをIssue・PR・公開リポジトリへ貼らない。
 - OBSERVED（確認事実）とHYPOTHESIS（推測）を必ず分離する。
+
+### Gemini — CI Failure Analyzer
+- GitHub Actionsの失敗ログをサニタイズ済みの診断データとしてread-only解析する別系統。
+- PRへコメントを書き込まない。コード変更もしない。
+- 検証済み結果はActions Artifactとして保存し、PMが回収する。
+- 権限は`actions: read` + `contents: read`のみ。書き込み権限を追加しない。
 
 ### Claude Code / Jules — Implementer
 - 現在のIssueと、必要ならGeminiの`NEXT`を読んで実装する。
@@ -51,6 +58,7 @@ GPSで近い停留所を表示し、初期状態では号数・方面を未選�
 - CopilotはPRレビュー・要約・指摘に使用する。
 - GitHub Actionsは決定論的な絶対ゲート。CIが赤なら次へ進まない。
 - テスト失敗を無視して完了扱いにしない。
+- `Test collector`はcollector変更時のPython unit testゲート。
 
 ## 4. Issue / Branch / PR プロトコル
 
@@ -91,7 +99,7 @@ BLOCKED
 
 ## 5. Gemini解析報告フォーマット
 
-Geminiが解析を完了した場合、Issueへ以下の形式で記録します。
+Issue解析Geminiが解析を完了した場合、Issueへ以下の形式で記録します。
 
 ```markdown
 ## 🤖 GEMINI ANALYSIS COMPLETE
@@ -127,7 +135,22 @@ High / Medium / Low
 - アクセス間隔などの数値を「推奨」と書く場合も根拠がなければ`HYPOTHESIS`または`RISK`へ置く。
 - 巨大HTMLはIssueへ貼らない。
 
-## 6. スクレイピング / データ収集ガードレール
+## 6. Gemini CI Failure Analyzer
+
+`.github/workflows/gemini-ci-failure.yml`は`Validate bus data`のtrusted internal PR失敗時だけ起動する。
+
+- 失敗ログを末尾中心に取得し、Secret/Token/API keyらしき行・値を除外する。
+- Geminiへはread-only local toolsだけを与える。
+- 出力は`OBSERVED / EVIDENCE / HYPOTHESIS / CONFIDENCE / NEXT / RISK`を必須とする。
+- 出力にSecret-like patternがあればArtifact化せず失敗する。
+- 合格結果だけを`gemini-ci-analysis-pr-<PR>-<HEAD_SHA>`というActions Artifactへ保存する。
+- Artifactには`analysis.md`と非機密`metadata.json`だけを含める。
+- 同一PR/SHAのArtifactが既にある場合は重複解析しない。
+- PR comment投稿は行わない。`issues: write` / `pull-requests: write`を追加しない。
+
+PR #21の意図的失敗E2Eで、Gemini解析→検査→Artifact生成→API回収まで成功確認済み。
+
+## 7. スクレイピング / データ収集ガードレール
 
 ### 対象
 - 公開されているHTML/PDFページのみを調査対象とする。
@@ -145,9 +168,69 @@ High / Medium / Low
 `collector/config.py` の `PERMISSION_GRANTED` は現在 `False` を維持する。
 実ネットワーク収集は、このガードを明示的に更新するIssueが承認されるまで実行しない。
 第三者からの一般的な回答やAIの解釈だけで勝手に`True`へ変更しない。
-合成フィクスチャや最小限のダミー構造によるパーサーテストは可。
+合成フィクスチャや保存済み最小構造によるパーサーテストは可。
 
-## 7. 時刻表データの必須ルール
+## 8. Bus-Vision collectorの現在の正しいモデル
+
+公開検索で確認できたページ役割を混同しない。
+
+### `diagram.html`
+停留所/のりば単位の時刻表・便詳細リンク列挙ページ。
+OBSERVED済みquery key:
+
+```text
+stopCd
+poleCd
+strLineList
+lang
+```
+
+`collector/bus_vision/stop_timetable.py`の`parse_stop_timetable()`は、保存済みHTMLから発車時刻と便詳細URL候補を抽出する。Production selectorは未確認なので既定値を置かない。
+
+### `diagramDetail.html`
+1便の系統/行先 + 複数停留所の通過/発車時刻ページ。
+OBSERVED済みquery key:
+
+```text
+corpCd
+dateDivCd
+diaCd
+lang
+lineCd
+opeYmd
+revYmd
+routeCd
+timetableDateDivCd
+updownCd
+```
+
+新規処理は`parse_trip_detail()`を使う。旧`parse_diagram_detail()`の停留所中心モデルをproduction構造と解釈しない。
+
+### オフライン結合
+
+現在の実装済み流れ:
+
+```text
+saved diagram.html
+  ↓ parse_stop_timetable()
+detail URL candidates
+  ↓ caller-provided saved HTML mapping
+saved diagramDetail.html
+  ↓ parse_trip_detail()
+DepartureRecord[]
+  ↓ target stop exactly once + time一致検証
+target stop records
+```
+
+Fail closed:
+- detail HTML欠落
+- target stop 0件/複数件
+- stop timetable側時刻とdetail側target stop時刻の不一致
+- 未確認情報の推測補完
+
+2026-09-03時点のcollector unit testsは76件PASS。件数は将来増えるのでActionsの最新結果を正とする。
+
+## 9. 時刻表データの必須ルール
 
 - 読めない発車時刻を勝手に創作しない。
 - 判読不能な単発時刻は省略可。理由は`data/metadata.json`へ記録する。
@@ -163,7 +246,7 @@ High / Medium / Low
 - 新規時刻表追加時は`data/metadata.json`のcoverageも更新する。
 - READMEの収録数は結合後の一意な系統×方面数と一致させる。
 
-## 8. 現在の時刻表構成
+## 10. 現在の時刻表構成
 
 - `data/timetable.json`: 基本データ
 - `data/timetable-extra.json`: 追加・上書き補正
@@ -172,17 +255,16 @@ High / Medium / Low
 結合後の既存収録データを壊さないこと。
 具体的な収録件数はvalidatorとREADMEの現在値を正として確認する。
 
-## 9. PWA / Service Worker
+## 11. PWA / Service Worker
 
 - Service Workerはnetwork-first。
 - 現在の`CACHE_VERSION`はv29。
 - `index.html` / JS / CSS / 時刻表データ等のPWA配信物を変更し、旧キャッシュ残存が問題になり得る場合は`CACHE_VERSION`を上げる。
 - README / AGENTS / DECISIONS / RUNBOOK / 検証スクリプトのみの変更では無意味に上げない。
 
-## 10. 必須検証
+## 12. 必須検証
 
-変更後はRUNBOOKに従う。
-最低限:
+PWA/データ変更ではRUNBOOKに従い最低限:
 
 ```bash
 npm ci
@@ -193,9 +275,15 @@ node --check js/app.js
 npm run test:smoke
 ```
 
-GitHub Actions `Validate bus data` がPASSすること。
+collector変更では:
 
-## 11. Risk分類
+```bash
+python3 -m unittest discover -s collector/tests -t .
+```
+
+GitHub Actions `Validate bus data` / `Test collector` の該当ゲートがPASSすること。
+
+## 13. Risk分類
 
 ### risk:low
 - 文言、軽微なUI、テスト追加、限定的な時刻表修正
@@ -214,7 +302,7 @@ GitHub Actions `Validate bus data` がPASSすること。
 
 `risk:high`は人間の明示承認なしに実行しない。
 
-## 12. 禁止コマンド / 破壊操作
+## 14. 禁止コマンド / 破壊操作
 
 原則禁止:
 
@@ -225,7 +313,7 @@ GitHub Actions `Validate bus data` がPASSすること。
 - 大量・破壊的削除
 - CI失敗状態での完了扱い
 
-## 13. Bootstrap例外
+## 15. Bootstrap例外
 
 AI開発OS v1そのものを最初に導入する1回だけ、Issueプロトコル導入前のためブートストラップ用ブランチで3コア文書を追加する例外を認める。
 この初回PRがマージされた後は、原則として全作業をIssue起点にする。
