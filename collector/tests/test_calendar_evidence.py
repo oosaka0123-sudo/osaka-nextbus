@@ -4,6 +4,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from collector import config
 from collector.bus_vision.calendar_evidence import (
     CalendarEvidenceError,
     calendar_to_code_map,
@@ -79,6 +80,12 @@ class CalendarEvidenceTest(unittest.TestCase):
             code_to_calendar_map(),
             {"11": "weekday", "13": "saturday", "12": "holiday"},
         )
+
+    def test_legacy_config_matches_verified_registry_without_enabling_network(self):
+        self.assertEqual(config.DATE_DIV_CD, calendar_to_code_map())
+        self.assertFalse(config.PERMISSION_GRANTED)
+        self.assertIsNone(config.BASE_URL)
+        self.assertIsNone(config.DIAGRAM_DETAIL_PATH_TEMPLATE)
 
     def test_holiday_evidence_locks_observed_sunday_url(self):
         entries = validate_calendar_document(document())
