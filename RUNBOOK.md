@@ -192,7 +192,109 @@ RISK
 
 第三者HTMLの引用は必要最小限にし、構造確認に必要な範囲を超えて転載しない。
 
-## 12. PR作成前チェック
+## 12. Gemini Heavy Analyzer GitHub Actions
+
+`.github/workflows/gemini-analyze.yml`がGemini Heavy Analyzerを担当する。
+Phase 1では**制御ラベル起動**を通常経路とし、`workflow_dispatch`を復旧・手動再実行用として残す。
+Issue作成だけでは起動しない。Geminiによるコード書き込みやauto-mergeも有効化しない。
+
+### 初回だけ必要: Gemini API KeyをGitHub Secretへ登録
+
+Google AI Studio等で取得したキーを、GitHubリポジトリの:
+
+```text
+Settings
+→ Secrets and variables
+→ Actions
+→ New repository secret
+```
+
+へ登録する。
+
+Secret名は必ず:
+
+```text
+GEMINI_API_KEY
+```
+
+キー値を`.env`、Issue、PR、チャット貼り付け用ファイル、リポジトリ内ドキュメントへ保存しない。
+このSecretが未設定ならworkflowは明示エラーで停止する。
+
+### 通常運用: IssueラベルからGeminiを起動
+
+対象Issueに:
+
+```text
+agent:gemini
+```
+
+が付いていることを確認する。
+その状態でPMがステータスを:
+
+```text
+status:doing
+```
+
+へ遷移させるとGemini Heavy Analyzerが起動する。
+`status:doing`の付与イベント時に`agent:gemini`が無いIssueでは起動しないため、一般Issueへの誤爆を防ぐ。
+
+推奨遷移:
+
+```text
+status:ready / status:blocked
+↓
+agent:gemini を維持
+↓
+status:doing を新しく付与
+↓
+Gemini Heavy Analyzer 起動
+```
+
+再実行時は、既存の`status:doing`を一度外してから再度付与する。
+
+### 代替運用: Actions画面から手動dispatch
+
+ラベルイベントが使えない時や復旧時は:
+
+```text
+Actions
+→ Gemini Heavy Analyzer
+→ Run workflow
+→ issue_number に対象Issue番号を入力
+→ Run workflow
+```
+
+例:
+
+```text
+issue_number: 12
+```
+
+### workflowが行うこと
+
+1. 対象Issue番号をイベントまたは手動入力から確定し、数値検証
+2. リポジトリをread-only権限でcheckout
+3. 対象Issueを`.gemini/issue.json`へ一時取得
+4. Geminiへ`AGENTS.md / DECISIONS.md / RUNBOOK.md / issue.json`を読ませる
+5. 公開情報だけを解析させる
+6. `OBSERVED / EVIDENCE / HYPOTHESIS / CONFIDENCE / NEXT / RISK`形式を要求
+7. 必須見出しを機械検査
+8. 合格した結果だけ対象Issueへコメント
+
+`.gemini/`は`.gitignore`対象で、生成した一時コンテキストをGitHubへコミットしない。
+Gemini ActionはリリースコミットSHAへ固定し、解析権限は`contents: read`と`issues: write`に限定する。
+
+### Gemini workflow失敗時
+
+- `GEMINI_API_KEY is not configured` → Secret設定を確認
+- Issue番号不正 → ラベル対象または手動入力を確認
+- 必須見出し不足 → Gemini出力を採用せず、prompt/Issue要件を確認
+- 外部ページが取得不能 → 取得不能を事実として扱い、推測で補完しない
+- 3回同じ失敗 → Issueを`status:blocked`
+
+Geminiの結果がIssueへ正常投稿されたら、PMは`OBSERVED`と`EVIDENCE`を確認して次のImplementer Issueへ進める。
+
+## 13. PR作成前チェック
 
 ```bash
 npm run validate
@@ -215,7 +317,7 @@ PR本文には最低限:
 
 を記載する。
 
-## 13. CI失敗時
+## 14. CI失敗時
 
 1. Actionsの失敗stepを特定
 2. 原因を1つに絞る
@@ -233,7 +335,7 @@ Playwright: expected 5 rows but got 0
 Need timetable fixture / requirement review
 ```
 
-## 14. 復旧・引き継ぎ
+## 15. 復旧・引き継ぎ
 
 新しいチャットや別AIへ移った場合、過去チャットを復元しようとせず:
 
