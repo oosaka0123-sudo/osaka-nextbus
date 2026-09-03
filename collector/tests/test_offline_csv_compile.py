@@ -2,12 +2,19 @@
 from __future__ import annotations
 
 import csv
+import io
 import json
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 
-from collector.offline_dry_run import DryRunError, compile_records_to_csv, run_dry_run
+from collector.offline_dry_run import (
+    DryRunError,
+    compile_records_to_csv,
+    main,
+    run_dry_run,
+)
 
 STOP_URL = (
     "https://oc.bus-vision.jp/osakacitybus/view/diagram.html?"
@@ -139,6 +146,30 @@ class OfflineCsvCompileTest(unittest.TestCase):
         records = run_dry_run(manifest, registry_path=self.registry)
         with self.assertRaises(DryRunError):
             compile_records_to_csv(records, self.root / "wrong.json")
+
+    def test_cli_output_csv_runs_full_verified_path(self):
+        manifest = self._manifest_for(DETAIL_11)
+        output = self.root / "cli.csv"
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            code = main(
+                [
+                    "--manifest",
+                    str(manifest),
+                    "--registry",
+                    str(self.registry),
+                    "--output-csv",
+                    str(output),
+                ]
+            )
+        self.assertEqual(code, 0)
+        self.assertTrue(output.exists())
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(payload[0]["service"], "11")
+        with output.open(encoding="utf-8", newline="") as f:
+            rows = list(csv.DictReader(f))
+        self.assertEqual(rows[0]["calendar"], "weekday")
+        self.assertEqual(rows[0]["routeId"], "鶴町三丁目-315527__87号")
 
 
 if __name__ == "__main__":
