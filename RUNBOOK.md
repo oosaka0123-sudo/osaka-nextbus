@@ -192,7 +192,73 @@ RISK
 
 第三者HTMLの引用は必要最小限にし、構造確認に必要な範囲を超えて転載しない。
 
-## 12. PR作成前チェック
+## 12. Gemini Heavy Analyzer GitHub Actions
+
+Phase 1では`.github/workflows/gemini-analyze.yml`を**手動dispatch**で起動する。
+Issueオープン時の自動起動やGeminiによるコード書き込みはまだ有効化しない。
+
+### 初回だけ必要: Gemini API KeyをGitHub Secretへ登録
+
+Google AI Studio等で取得したキーを、GitHubリポジトリの:
+
+```text
+Settings
+→ Secrets and variables
+→ Actions
+→ New repository secret
+```
+
+へ登録する。
+
+Secret名は必ず:
+
+```text
+GEMINI_API_KEY
+```
+
+キー値を`.env`、Issue、PR、チャット貼り付け用ファイル、リポジトリ内ドキュメントへ保存しない。
+このSecretが未設定ならworkflowは明示エラーで停止する。
+
+### Gemini解析を実行
+
+GitHubリポジトリで:
+
+```text
+Actions
+→ Gemini Heavy Analyzer
+→ Run workflow
+→ issue_number に対象Issue番号を入力
+→ Run workflow
+```
+
+例:
+
+```text
+issue_number: 12
+```
+
+workflowは以下を行う。
+
+1. リポジトリをread-only権限でcheckout
+2. 対象Issueを`.gemini/issue.json`へ一時取得
+3. Geminiへ`AGENTS.md / DECISIONS.md / RUNBOOK.md / issue.json`を読ませる
+4. 公開情報だけを解析させる
+5. `OBSERVED / EVIDENCE / HYPOTHESIS / CONFIDENCE / NEXT / RISK`形式を要求
+6. 必須見出しを機械検査
+7. 合格した結果だけ対象Issueへコメント
+
+`.gemini/`は`.gitignore`対象で、生成した一時コンテキストをGitHubへコミットしない。
+
+### Gemini workflow失敗時
+
+- `GEMINI_API_KEY is not configured` → Secret設定を確認
+- 必須見出し不足 → Gemini出力を採用せず、prompt/Issue要件を確認
+- 外部ページが取得不能 → 取得不能を事実としてIssueへ残し、推測で補完しない
+- 3回同じ失敗 → Issueを`status:blocked`
+
+Geminiの結果がIssueへ正常投稿されたら、PMは`OBSERVED`と`EVIDENCE`を確認して次のImplementer Issueへ進める。
+
+## 13. PR作成前チェック
 
 ```bash
 npm run validate
@@ -215,7 +281,7 @@ PR本文には最低限:
 
 を記載する。
 
-## 13. CI失敗時
+## 14. CI失敗時
 
 1. Actionsの失敗stepを特定
 2. 原因を1つに絞る
@@ -233,7 +299,7 @@ Playwright: expected 5 rows but got 0
 Need timetable fixture / requirement review
 ```
 
-## 14. 復旧・引き継ぎ
+## 15. 復旧・引き継ぎ
 
 新しいチャットや別AIへ移った場合、過去チャットを復元しようとせず:
 
