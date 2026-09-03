@@ -10,139 +10,119 @@
 1. `AGENTS.md`
 2. `DECISIONS.md`
 3. この`RUNBOOK.md`
-4. 現在のIssue
-5. 現在のPR / GitHub Actions結果
+4. open Issue
+5. open PR
+6. latest GitHub Actions
 
 巨大HTML、過去チャット全文、リポジトリ全履歴は原則として最初から読まない。
+目標は新しいセッションでも約5分以内に現在状態を理解すること。
 
 ## 2. 開発サイクル
 
-1. GPTがIssueを作成し、Goal / Acceptance Criteria / Risk / Out-of-scopeを定義
-2. 必要な場合だけGeminiが公開ページや巨大ログを解析
-3. GeminiはIssueへ`GEMINI ANALYSIS COMPLETE`形式で短く記録
-4. Claude Code / Julesが1 Issue = 1 Branchで実装
-5. ローカル検証
+1. GPT/PMがIssueを作成し、Goal / Acceptance Criteria / Risk / Out-of-scopeを定義
+2. 必要な場合だけGemini Issue Analyzerを起動
+3. Geminiは`OBSERVED / EVIDENCE / HYPOTHESIS / CONFIDENCE / NEXT / RISK`形式でIssueへ記録
+4. Claude Code / Jules / Human implementerが1 Issue = 1 Branchで実装
+5. 必須ローカル検証
 6. PR作成
-7. GitHub Actionsを実行
+7. GitHub Actions
 8. Copilot / Human review
-9. CI PASSかつレビュー問題なしならマージ
+9. CI PASSかつ重大指摘なしならRiskに応じてマージ
 10. Issueを完了し、次Issueへ進む
 
-同じ失敗を3回繰り返したら作業を停止しBLOCKEDとして報告する。
+同じ原因で3回失敗したら3-strikeでBLOCKEDへ移行する。
 
-## 3. セットアップ
-
-Node.js環境で:
+## 3. Node.jsセットアップ
 
 ```bash
 npm ci
 ```
 
-依存関係は`package-lock.json`を正として再現します。
+依存関係は`package-lock.json`を正とする。
 
-## 4. データ検証
+## 4. PWA / 時刻表データ検証
 
 ```bash
 npm run validate
+node --check js/timetable-loader.js
+node --check js/data.js
+node --check js/app.js
+npm run test:smoke
 ```
 
-直接実行する場合:
+直接validatorを実行する場合:
 
 ```bash
 node scripts/validate-data.mjs
 ```
 
 主な確認対象:
-
 - JSON parse
 - stopId / routeId参照
 - HH:MM形式
 - 曜日別配列の昇順・重複
 - base / extra結合後の整合性
 - metadata coverage
-
-## 5. JavaScript構文確認
-
-```bash
-node --check js/timetable-loader.js
-node --check js/data.js
-node --check js/app.js
-```
-
-## 6. ブラウザ回帰テスト
-
-```bash
-npm run test:smoke
-```
-
-Playwrightが必要なブラウザをまだ持っていない環境では、必要に応じてPlaywrightのブラウザセットアップを行ってから再実行する。
-
-確認対象例:
-
-- 停留所表示
-- GPS許可 / 拒否
-- 初期状態の号数・方面未選択
-- 早く来る順の約5件表示
-- 号数フィルタ
-- 方面選択後の次3便表示
+- 初期状態の号数/方面未選択
+- 早く来る順の約5件
+- 号数/方面フィルタ
 - 主表示の秒カウント
-- 平日 / 土曜 / 休日
 - 24時超え便
-- 終バス後ロールオーバー
-- pending表示
 - Service Worker / offline
-- 既存時刻表の回帰
 
-## 7. ローカルWebサーバー
+## 5. collector unit tests
 
-簡易確認:
+collector変更では必ず:
+
+```bash
+python3 -m unittest discover -s collector/tests -t .
+```
+
+GitHub Actionsは`.github/workflows/test-collector.yml`の`Test collector`を正とする。
+2026-09-03時点では76 tests PASSだが、将来増えるため固定件数を完了条件にせず、最新Actionsの全PASSを正とする。
+
+ログに以下が出ることは安全ガードの正常動作:
+
+```text
+config.PERMISSION_GRANTED が False
+```
+
+## 6. ローカルWebサーバー
 
 ```bash
 python3 -m http.server 8123
 ```
 
-ブラウザで:
+ブラウザ:
 
 ```text
 http://localhost:8123/
 ```
 
-PWA / Service Workerの挙動を確認する場合は、キャッシュ状態とcontroller更新にも注意する。
+PWA / Service Worker確認時はキャッシュとcontroller更新に注意する。
 
-## 8. Service Worker更新
+## 7. Service Worker更新
 
-PWA配信物を変更して旧キャッシュが問題になる場合のみ`sw.js`の`CACHE_VERSION`を上げる。
+PWA配信物を変更して旧キャッシュが問題になる場合だけ`sw.js`の`CACHE_VERSION`を上げる。
+現在の基準は`v29`。
 
-現在の基準バージョン:
+文書のみ、collectorのみ、CIのみの変更では無意味に上げない。
 
-```text
-v29
-```
-
-次のような文書変更だけでは上げない:
-
-- AGENTS.md
-- DECISIONS.md
-- RUNBOOK.md
-- README.mdのみ
-
-## 9. 時刻表データ変更時
+## 8. 時刻表データ変更時
 
 必ず以下を確認する。
 
-- routeIdが`data/routes.json`に存在する
-- direction / destinationが正しい
+- routeIdが`data/routes.json`に存在
+- direction / destinationが非空で正しい
 - weekday / saturday / holidayが配列
 - 運休は`[]`
 - 時刻は昇順・重複なし
 - 架空時刻を作っていない
-- 近似ならmetadataに明記
-- extra補正なら上書き理由をmetadataに記録
+- 近似ならmetadataへ根拠を記録
+- extra補正なら上書き理由をmetadataへ記録
 - coverageと結合後件数が一致
 
-## 10. collector / 外部Web調査
-
-### 現在の安全状態
+## 9. collector / 外部Web調査の安全状態
 
 `collector/config.py`:
 
@@ -150,151 +130,209 @@ v29
 PERMISSION_GRANTED = False
 ```
 
-この状態では実ネットワーク収集を開始しない。
+この状態では実ネットワークcollectorを開始しない。
 AIが独断で`True`へ変更しない。
 
-### 許可されるPhase 1作業
+### 許可される作業
 
-- 公開URLの人手確認
-- 公開ページ構造の解析
-- Geminiによる巨大コンテキスト解析
-- 合成フィクスチャでのパーサーテスト
-- JSON変換仕様の設計
+- 公開URLを通常ブラウザ/検索で人手確認
+- 公開ページの最小構造解析
+- GitHubに記録済み証拠のGemini解析
+- 合成HTML fixtureでParserテスト
+- 保存HTMLをcaller-provided mappingとして渡すオフラインE2E
+- URL文字列のquery parameterを純粋関数で解析
 
-### 実ネットワークcollector有効化前の条件
+### 禁止/別承認が必要
 
-別Issueを作成し、最低限以下をAcceptance Criteriaに含める。
+- 非公開内部API探索
+- 認証/技術的保護回避
+- 実ネットワークcollector有効化
+- 全992停留所の自動巡回
+- 大量取得
+- 第三者HTML全文の公開GitHub保存
 
-- 対象URLと公開範囲が確認済み
-- 規約・robots.txt・運営者回答を確認済み
-- アクセス頻度と並列数を明示
-- キャッシュ / checkpoint / backoff設計を明示
-- `risk:high`として人間承認
-- `PERMISSION_GRANTED_NOTE`に根拠を記録
+実ネットワーク有効化は`risk:high`の別Issue + 人間明示承認が必要。
 
-## 11. Gemini調査の入力・出力
+## 10. Bus-Vision collectorの現在のパイプライン
 
-Geminiへ巨大HTMLを渡す場合、GitHubへ全文を保存する必要はありません。
-解析結果だけをIssueへ残します。
+ページ役割を混同しない。
 
-Issueコメントは:
+### A. `diagram.html` — 停留所時刻表・便列挙
 
-```text
-OBSERVED
-EVIDENCE
-HYPOTHESIS
-CONFIDENCE
-NEXT
-RISK
-```
-
-の順に整理します。
-
-第三者HTMLの引用は必要最小限にし、構造確認に必要な範囲を超えて転載しない。
-
-## 12. Gemini Heavy Analyzer GitHub Actions
-
-`.github/workflows/gemini-analyze.yml`がGemini Heavy Analyzerを担当する。
-Phase 1では**制御ラベル起動**を通常経路とし、`workflow_dispatch`を復旧・手動再実行用として残す。
-Issue作成だけでは起動しない。Geminiによるコード書き込みやauto-mergeも有効化しない。
-
-### 初回だけ必要: Gemini API KeyをGitHub Secretへ登録
-
-Google AI Studio等で取得したキーを、GitHubリポジトリの:
+OBSERVED済みquery key:
 
 ```text
-Settings
-→ Secrets and variables
-→ Actions
-→ New repository secret
+stopCd
+poleCd
+strLineList
+lang
 ```
 
-へ登録する。
+純粋URL解析:
 
-Secret名は必ず:
+```python
+extract_stop_timetable_identifiers(url)
+```
+
+保存HTML Parser:
+
+```python
+parse_stop_timetable(...)
+```
+
+出力は発車時刻 + 便詳細URL候補。最終`DepartureRecord`ではない。
+相対リンクはsource URL基準で絶対化し、異なるoriginは拒否する。
+
+### B. `diagramDetail.html` — 1便詳細
+
+OBSERVED済みquery key:
+
+```text
+corpCd
+dateDivCd
+diaCd
+lang
+lineCd
+opeYmd
+revYmd
+routeCd
+timetableDateDivCd
+updownCd
+```
+
+純粋URL解析:
+
+```python
+extract_diagram_detail_identifiers(url)
+```
+
+保存HTML Parser:
+
+```python
+parse_trip_detail(...)
+```
+
+1便が通る複数停留所の`DepartureRecord[]`を返す。
+Production DOM selectorは未確認のため既定値を置かない。
+
+### C. オフラインE2E
+
+```text
+saved diagram.html
+  ↓ parse_stop_timetable()
+detail URL candidates
+  ↓ caller-provided saved detail HTML mapping
+saved diagramDetail.html
+  ↓ parse_trip_detail()
+records
+  ↓ target stop exactly once + time一致検証
+target stop DepartureRecord[]
+```
+
+Pipelineはネットワークfetchをしない。
+以下はfail closed:
+
+- detail HTML mapping欠落
+- target stopが0件/複数件
+- stop timetable発車時刻とdetail target stop時刻の不一致
+- `dateDivCd`欠落をweekday等へ勝手に推測
+
+## 11. Gemini Issue Analyzer
+
+`.github/workflows/gemini-analyze.yml`がIssue解析を担当する。
+
+通常トリガー:
+
+```text
+agent:gemini
++
+status:doing を新しく付与
+```
+
+Issue作成だけでは起動しない。
+再実行は一度`status:doing`を外してから再付与する。
+
+代替:
+
+```text
+Actions → Gemini Heavy Analyzer → Run workflow → issue_number
+```
+
+Secret:
 
 ```text
 GEMINI_API_KEY
 ```
 
-キー値を`.env`、Issue、PR、チャット貼り付け用ファイル、リポジトリ内ドキュメントへ保存しない。
-このSecretが未設定ならworkflowは明示エラーで停止する。
+Secret値をIssue/PR/チャット/ファイルへ貼らない。
 
-### 通常運用: IssueラベルからGeminiを起動
+### Issue Analyzerの原則
 
-対象Issueに:
+- まず`AGENTS.md / DECISIONS.md / RUNBOOK.md / Issue本文・コメント`を読む。
+- 外部URLへアクセスしない設定のIssueでは、記録済み証拠だけで分析する。
+- 未確認URL/selector/calendar codeを創作しない。
+- 必須見出し不足なら結果を採用しない。
 
-```text
-agent:gemini
-```
+## 12. Gemini CI Failure Analyzer
 
-が付いていることを確認する。
-その状態でPMがステータスを:
+`.github/workflows/gemini-ci-failure.yml`が`Validate bus data`のtrusted internal PR failureを解析する。
 
-```text
-status:doing
-```
-
-へ遷移させるとGemini Heavy Analyzerが起動する。
-`status:doing`の付与イベント時に`agent:gemini`が無いIssueでは起動しないため、一般Issueへの誤爆を防ぐ。
-
-推奨遷移:
+### 現在の正式フロー
 
 ```text
-status:ready / status:blocked
-↓
-agent:gemini を維持
-↓
-status:doing を新しく付与
-↓
-Gemini Heavy Analyzer 起動
+Validate bus data failure
+  ↓
+failed logs取得
+  ↓ sanitize
+Gemini read-only analysis
+  ↓
+required heading + secret-like pattern validation
+  ↓
+Actions Artifact
+  ↓
+PM retrieval
 ```
 
-再実行時は、既存の`status:doing`を一度外してから再度付与する。
+**PRコメント投稿はしない。**
+GraphQL/REST comment方式はGitHub integration境界で403となり、3-strikeで廃止済み。
 
-### 代替運用: Actions画面から手動dispatch
-
-ラベルイベントが使えない時や復旧時は:
+Workflow権限:
 
 ```text
-Actions
-→ Gemini Heavy Analyzer
-→ Run workflow
-→ issue_number に対象Issue番号を入力
-→ Run workflow
+actions: read
+contents: read
 ```
 
-例:
+Artifact名:
 
 ```text
-issue_number: 12
+gemini-ci-analysis-pr-<PR_NUMBER>-<HEAD_SHA>
 ```
 
-### workflowが行うこと
+内容:
 
-1. 対象Issue番号をイベントまたは手動入力から確定し、数値検証
-2. リポジトリをread-only権限でcheckout
-3. 対象Issueを`.gemini/issue.json`へ一時取得
-4. Geminiへ`AGENTS.md / DECISIONS.md / RUNBOOK.md / issue.json`を読ませる
-5. 公開情報だけを解析させる
-6. `OBSERVED / EVIDENCE / HYPOTHESIS / CONFIDENCE / NEXT / RISK`形式を要求
-7. 必須見出しを機械検査
-8. 合格した結果だけ対象Issueへコメント
+```text
+analysis.md
+metadata.json
+```
 
-`.gemini/`は`.gitignore`対象で、生成した一時コンテキストをGitHubへコミットしない。
-Gemini ActionはリリースコミットSHAへ固定し、解析権限は`contents: read`と`issues: write`に限定する。
+retentionはworkflow定義を正とする（導入時14日）。
+同一PR/SHAのArtifactが存在すれば重複解析を抑止する。
 
-### Gemini workflow失敗時
+### PMのArtifact回収手順
 
-- `GEMINI_API_KEY is not configured` → Secret設定を確認
-- Issue番号不正 → ラベル対象または手動入力を確認
-- 必須見出し不足 → Gemini出力を採用せず、prompt/Issue要件を確認
-- 外部ページが取得不能 → 取得不能を事実として扱い、推測で補完しない
-- 3回同じ失敗 → Issueを`status:blocked`
+1. 最新`Gemini CI Failure Analyzer` runを確認
+2. runのArtifacts一覧を取得
+3. 対象PR/SHA名のArtifactを取得
+4. `analysis.md`を読む
+5. `metadata.json`でPR / source workflow run / head SHA / analyzer runを照合
+6. Geminiの`OBSERVED`と`EVIDENCE`を根拠に次Issue/修正へ進む
 
-Geminiの結果がIssueへ正常投稿されたら、PMは`OBSERVED`と`EVIDENCE`を確認して次のImplementer Issueへ進める。
+Artifactの解析結果は提案であり、自動fix/自動mergeではない。
 
 ## 13. PR作成前チェック
+
+PWA/データ変更:
 
 ```bash
 npm run validate
@@ -304,10 +342,13 @@ node --check js/app.js
 npm run test:smoke
 ```
 
-すべてPASSしたらPRへ。
+collector変更:
+
+```bash
+python3 -m unittest discover -s collector/tests -t .
+```
 
 PR本文には最低限:
-
 - Related Issue
 - Summary
 - Changed behavior / files
@@ -315,29 +356,29 @@ PR本文には最低限:
 - Risk
 - UI変更なら確認内容
 
-を記載する。
-
 ## 14. CI失敗時
 
-1. Actionsの失敗stepを特定
-2. 原因を1つに絞る
-3. 修正
-4. 同じ必須テストを再実行
-5. 3回失敗で停止
+1. 失敗stepを特定
+2. Gemini CI Artifactが生成されていれば回収
+3. OBSERVED/EVIDENCEを確認
+4. 原因を1つに絞る
+5. 最小修正
+6. 同じ必須テストを再実行
+7. 同じ原因で3回失敗したらBLOCKED
 
-BLOCKED報告例:
+BLOCKED例:
 
 ```text
-Issue #31
+Issue #XX
 BLOCKED
-Playwright: expected 5 rows but got 0
+原因
 3 retries exhausted
-Need timetable fixture / requirement review
+次に必要な判断
 ```
 
 ## 15. 復旧・引き継ぎ
 
-新しいチャットや別AIへ移った場合、過去チャットを復元しようとせず:
+新しいチャット/別AIでは過去会話復元を前提にしない。
 
 1. `AGENTS.md`
 2. `DECISIONS.md`
@@ -346,6 +387,6 @@ Need timetable fixture / requirement review
 5. open PR
 6. latest Actions
 
-だけを読んで再開する。
+だけを起点に再開する。
 
-目標: 完全に新しいセッションでも約5分以内に現在状態を理解し、安全に次作業へ進めること。
+GitHubが長期記憶、LLMチャットは交換可能な作業セッションとして扱う。
