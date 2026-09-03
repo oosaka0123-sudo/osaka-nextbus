@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "entries": [
+    {
+      "calendar": "weekday",
+      "dateDivCd": "11",
+      "sourceUrl": "https://oc.bus-vision.jp/osakacitybus/view/diagramDetail.html?corpCd=1&dateDivCd=11&diaCd=4188&lang=0&lineCd=71&opeYmd=20251217&revYmd=20251201&routeCd=7100&timetableDateDivCd=-1&updownCd=1",
+      "observedAt": "2026-09-03",
+      "evidenceNote": "公開検索由来のWEEKDAY_URLとしてcollector/tests/test_bus_vision_trip_detail.pyに回帰固定済み。"
+    },
+    {
+      "calendar": "saturday",
+      "dateDivCd": "13",
+      "sourceUrl": "https://oc.bus-vision.jp/osakacitybus/view/diagramDetail.html?corpCd=1&dateDivCd=13&diaCd=17274&lang=0&lineCd=71&opeYmd=20250607&revYmd=20250601&routeCd=7100&timetableDateDivCd=-1&updownCd=1",
+      "observedAt": "2026-09-03",
+      "evidenceNote": "公開検索由来のSATURDAY_URLとしてcollector/tests/test_bus_vision_trip_detail.pyのtest_observed_saturday_url_keeps_raw_date_div_codeに回帰固定済み。"
+    }
+  ]
+}

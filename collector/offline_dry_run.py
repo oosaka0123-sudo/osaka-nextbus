@@ -7,6 +7,11 @@ manifestの不備は推測で補完せずfail closedする。
 Usage:
     python3 -m collector.offline_dry_run --list-targets
     python3 -m collector.offline_dry_run --manifest /path/to/manifest.json
+    python3 -m collector.offline_dry_run --manifest /path/to/manifest.json --output-csv /tmp/timetable.csv
+
+`--output-csv`を指定した場合もproduction config/dateDivCdを推測しない。
+Verified Calendar Evidence Registryに存在するserviceだけを既存CSV converterへ渡す。
+本番data/timetable*.jsonは一切更新しない。
 
 manifest schemaVersion=1 の例:
 {
@@ -42,12 +47,19 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
+import tempfile
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence
 
+from .bus_vision.calendar_evidence import (
+    DEFAULT_CALENDAR_REGISTRY_PATH,
+    CalendarEvidenceError,
+    calendar_to_code_map,
+)
 from .bus_vision.evidence_registry import (
     DEFAULT_REGISTRY_PATH,
     EvidenceRegistryError,
@@ -61,9 +73,17 @@ from .bus_vision.selectors import (
     StopTimetableSelectorConfig,
     TripDetailSelectorConfig,
 )
+from .convert_to_timetable_csv import (
+    convert,
+    load_route_index,
+    load_stop_index,
+    write_csv,
+)
 from .models import DepartureRecord
 
 MANIFEST_SCHEMA_VERSION = 1
+DEFAULT_STOPS_PATH = Path("data/stops.json")
+DEFAULT_ROUTES_PATH = Path("data/routes.json")
 
 
 class DryRunError(RuntimeError):
@@ -309,6 +329,61 @@ def run_dry_run(
     )
 
 
+def compile_records_to_csv(
+    records: Sequence[DepartureRecord],
+    output_path: Path | str,
+    *,
+    calendar_registry_path: Path | str = DEFAULT_CALENDAR_REGISTRY_PATH,
+    stops_path: Path | str = DEFAULT_STOPS_PATH,
+    routes_path: Path | str = DEFAULT_ROUTES_PATH,
+) -> int:
+    """Validated dry-run records -> long-format CSV using verified-only mappings.
+
+    Writes atomically only after every record passes stop/route/calendar validation.
+    Existing output is never truncated by a failed validation attempt.
+    """
+    stop_index = load_stop_index(Path(stops_path))
+    route_index = load_route_index(Path(routes_path))
+    verified_calendar_map = calendar_to_code_map(calendar_registry_path)
+    rows, errors = convert(
+        [record.as_dict() for record in records],
+        stop_index,
+        route_index,
+        verified_calendar_map,
+    )
+    if errors:
+        raise DryRunError(
+            "CSV compilation failed closed: " + " | ".join(errors[:10])
+        )
+
+    output_path = Path(output_path).expanduser().resolve()
+    if output_path.suffix.lower() != ".csv":
+        raise DryRunError("--output-csv path must end with .csv")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    tmp_name = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            prefix=f".{output_path.name}.",
+            suffix=".tmp",
+            dir=output_path.parent,
+            delete=False,
+        ) as tmp:
+            tmp_name = tmp.name
+        tmp_path = Path(tmp_name)
+        write_csv(rows, tmp_path)
+        os.replace(tmp_path, output_path)
+    except OSError as exc:
+        if tmp_name:
+            try:
+                Path(tmp_name).unlink(missing_ok=True)
+            except OSError:
+                pass
+        raise DryRunError(f"failed to write CSV atomically: {exc}") from exc
+
+    return len(rows)
+
+
 def list_verified_targets(
     registry_path: Path | str = DEFAULT_REGISTRY_PATH,
 ) -> List[Dict[str, str]]:
@@ -346,7 +421,20 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         "--registry",
         type=Path,
         default=DEFAULT_REGISTRY_PATH,
-        help="Evidence Registry JSON path (default: collector/evidence/stop_timetables.json)",
+        help="Stop Evidence Registry JSON path",
+    )
+    parser.add_argument(
+        "--calendar-registry",
+        type=Path,
+        default=DEFAULT_CALENDAR_REGISTRY_PATH,
+        help="Verified Calendar Evidence Registry JSON path",
+    )
+    parser.add_argument("--stops", type=Path, default=DEFAULT_STOPS_PATH)
+    parser.add_argument("--routes", type=Path, default=DEFAULT_ROUTES_PATH)
+    parser.add_argument(
+        "--output-csv",
+        type=Path,
+        help="manifest dry-run成功時だけlong-format CSVをatomic出力する",
     )
     return parser
 
@@ -356,13 +444,23 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args = parser.parse_args(argv)
     try:
         if args.list_targets:
+            if args.output_csv is not None:
+                raise DryRunError("--output-csv requires --manifest")
             payload: Any = list_verified_targets(args.registry)
         else:
             records = run_dry_run(args.manifest, registry_path=args.registry)
             payload = [record.as_dict() for record in records]
+            if args.output_csv is not None:
+                compile_records_to_csv(
+                    records,
+                    args.output_csv,
+                    calendar_registry_path=args.calendar_registry,
+                    stops_path=args.stops,
+                    routes_path=args.routes,
+                )
         print(json.dumps(payload, ensure_ascii=False, indent=2))
         return 0
-    except (DryRunError, EvidenceRegistryError, ParseError) as exc:
+    except (DryRunError, EvidenceRegistryError, CalendarEvidenceError, ParseError, ValueError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
 
