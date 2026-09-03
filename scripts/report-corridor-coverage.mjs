@@ -12,6 +12,16 @@ export const DEFAULT_STOP_NAMES = [
   "鶴町四丁目",
 ];
 
+export const CALENDAR_TYPES = ["weekday", "saturday", "holiday"];
+
+// verifiedCalendars省略entryはbackward compatibilityとして3曜日すべてverified扱いにする
+// (js/data.js の normalizeVerifiedCalendars / scripts/validate-data.mjs と同じ規則)。
+export function normalizeVerifiedCalendars(entry) {
+  if (!Array.isArray(entry?.verifiedCalendars)) return [...CALENDAR_TYPES];
+  const verified = entry.verifiedCalendars.filter((calendar) => CALENDAR_TYPES.includes(calendar));
+  return CALENDAR_TYPES.filter((calendar) => verified.includes(calendar));
+}
+
 const FILES = {
   stops: "data/stops.json",
   routes: "data/routes.json",
@@ -73,21 +83,50 @@ export function buildCoverageReport({ stops, routes, base, extra }, stopNames = 
 
     const routeReports = stopRoutes.map((route) => {
       const entries = entriesByRouteId.get(route.id) ?? [];
-      return {
-        routeId: route.id,
-        label: route.label ?? "",
-        covered: entries.length > 0,
-        timetableEntryCount: entries.length,
-        services: entries.map((entry) => ({
+      const services = entries.map((entry) => {
+        const verifiedCalendars = normalizeVerifiedCalendars(entry);
+        const unverifiedCalendars = CALENDAR_TYPES.filter(
+          (calendar) => !verifiedCalendars.includes(calendar),
+        );
+        return {
           direction: entry.direction,
           destination: entry.destination,
           source: entry.source,
           weekdayCount: Array.isArray(entry.weekday) ? entry.weekday.length : 0,
           saturdayCount: Array.isArray(entry.saturday) ? entry.saturday.length : 0,
           holidayCount: Array.isArray(entry.holiday) ? entry.holiday.length : 0,
-        })),
+          verifiedCalendars,
+          unverifiedCalendars,
+        };
+      });
+
+      // 曜日ごとのverification state: そのrouteの全serviceがverified扱いにしている場合のみ"verified"。
+      // service自体が無い(covered=false)場合は当然すべて"missing"。
+      const calendarVerification = Object.fromEntries(
+        CALENDAR_TYPES.map((calendar) => [
+          calendar,
+          services.length > 0 && services.every((service) => service.verifiedCalendars.includes(calendar))
+            ? "verified"
+            : "missing",
+        ]),
+      );
+
+      return {
+        routeId: route.id,
+        label: route.label ?? "",
+        covered: entries.length > 0,
+        timetableEntryCount: entries.length,
+        calendarVerification,
+        services,
       };
     });
+
+    const calendarSummary = Object.fromEntries(
+      CALENDAR_TYPES.map((calendar) => {
+        const verified = routeReports.filter((route) => route.calendarVerification[calendar] === "verified").length;
+        return [calendar, { verified, missing: routeReports.length - verified }];
+      }),
+    );
 
     return {
       stopName: stop.name,
@@ -95,9 +134,20 @@ export function buildCoverageReport({ stops, routes, base, extra }, stopNames = 
       routeAssociationCount: routeReports.length,
       coveredRouteCount: routeReports.filter((route) => route.covered).length,
       missingRouteCount: routeReports.filter((route) => !route.covered).length,
+      calendarSummary,
       routes: routeReports,
     };
   });
+
+  const totalCalendarSummary = Object.fromEntries(
+    CALENDAR_TYPES.map((calendar) => [
+      calendar,
+      {
+        verified: reportStops.reduce((sum, stop) => sum + stop.calendarSummary[calendar].verified, 0),
+        missing: reportStops.reduce((sum, stop) => sum + stop.calendarSummary[calendar].missing, 0),
+      },
+    ]),
+  );
 
   return {
     generatedFrom: [FILES.stops, FILES.routes, FILES.base, FILES.extra],
@@ -107,6 +157,7 @@ export function buildCoverageReport({ stops, routes, base, extra }, stopNames = 
       coveredRoutes: reportStops.reduce((sum, stop) => sum + stop.coveredRouteCount, 0),
       missingRoutes: reportStops.reduce((sum, stop) => sum + stop.missingRouteCount, 0),
       mergedTimetableEntries: mergedTimetables.length,
+      calendars: totalCalendarSummary,
     },
     stops: reportStops,
   };
@@ -127,29 +178,38 @@ async function loadProjectData(root = process.cwd()) {
 }
 
 function formatHuman(report) {
+  const formatCalendarCounts = (summary) =>
+    CALENDAR_TYPES.map((calendar) => `${calendar}=${summary[calendar].verified}/${summary[calendar].verified + summary[calendar].missing}`).join(" ");
+
   const lines = [
     "次バス大阪 — 時刻表カバレッジ監査",
     `対象停留所: ${report.stopCount}`,
     `route associations: ${report.totals.routeAssociations}`,
     `covered: ${report.totals.coveredRoutes}`,
     `missing: ${report.totals.missingRoutes}`,
+    `calendar verified (verified/routes): ${formatCalendarCounts(report.totals.calendars)}`,
     "",
   ];
 
   for (const stop of report.stops) {
     lines.push(`[${stop.stopName}] ${stop.stopId}`);
     lines.push(`  routes=${stop.routeAssociationCount} covered=${stop.coveredRouteCount} missing=${stop.missingRouteCount}`);
+    lines.push(`  calendar verified (verified/routes): ${formatCalendarCounts(stop.calendarSummary)}`);
 
     if (stop.routes.length === 0) {
       lines.push("  (route associationなし)");
     }
 
     for (const route of stop.routes) {
-      lines.push(`  ${route.covered ? "COVERED" : "MISSING"} ${route.label} (${route.routeId})`);
+      const calendarState = CALENDAR_TYPES.map(
+        (calendar) => `${calendar}=${route.calendarVerification[calendar]}`,
+      ).join(" ");
+      lines.push(`  ${route.covered ? "COVERED" : "MISSING"} ${route.label} (${route.routeId}) [${calendarState}]`);
       for (const service of route.services) {
         lines.push(
           `    - ${service.direction} / ${service.destination} [${service.source}] ` +
-            `weekday=${service.weekdayCount} saturday=${service.saturdayCount} holiday=${service.holidayCount}`,
+            `weekday=${service.weekdayCount} saturday=${service.saturdayCount} holiday=${service.holidayCount} ` +
+            `verified=${service.verifiedCalendars.join(",") || "なし"} unverified=${service.unverifiedCalendars.join(",") || "なし"}`,
         );
       }
     }

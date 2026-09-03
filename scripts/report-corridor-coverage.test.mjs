@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { buildCoverageReport, mergeTimetables } from "./report-corridor-coverage.mjs";
+import { buildCoverageReport, mergeTimetables, normalizeVerifiedCalendars } from "./report-corridor-coverage.mjs";
 
 function fixture() {
   return {
@@ -87,4 +87,100 @@ test("duplicate stop names fail closed", () => {
     () => buildCoverageReport(data, ["停留所A"]),
     /停留所名が一意ではありません/,
   );
+});
+
+test("legacy entry without verifiedCalendars is treated as all 3 calendars verified", () => {
+  assert.deepEqual(normalizeVerifiedCalendars({}), ["weekday", "saturday", "holiday"]);
+  assert.deepEqual(
+    normalizeVerifiedCalendars({ weekday: ["06:00"], saturday: [], holiday: [] }),
+    ["weekday", "saturday", "holiday"],
+  );
+});
+
+test("weekday-only verifiedCalendars entry keeps only weekday verified", () => {
+  assert.deepEqual(normalizeVerifiedCalendars({ verifiedCalendars: ["weekday"] }), ["weekday"]);
+});
+
+test("report marks legacy entry as fully verified across all calendars", () => {
+  const report = buildCoverageReport(fixture(), ["停留所A"]);
+  const route1 = report.stops[0].routes.find((route) => route.label === "1号");
+
+  assert.deepEqual(route1.calendarVerification, {
+    weekday: "verified",
+    saturday: "verified",
+    holiday: "verified",
+  });
+  assert.deepEqual(route1.services[0].verifiedCalendars, ["weekday", "saturday", "holiday"]);
+  assert.deepEqual(route1.services[0].unverifiedCalendars, []);
+});
+
+test("report marks a weekday-only partial entry as saturday/holiday missing", () => {
+  const data = fixture();
+  data.extra[0].verifiedCalendars = ["weekday"];
+  const report = buildCoverageReport(data, ["停留所A"]);
+  const route1 = report.stops[0].routes.find((route) => route.label === "1号");
+
+  assert.deepEqual(route1.calendarVerification, {
+    weekday: "verified",
+    saturday: "missing",
+    holiday: "missing",
+  });
+  assert.deepEqual(route1.services[0].verifiedCalendars, ["weekday"]);
+  assert.deepEqual(route1.services[0].unverifiedCalendars, ["saturday", "holiday"]);
+});
+
+test("route with no timetable entry is missing for every calendar", () => {
+  const report = buildCoverageReport(fixture(), ["停留所A"]);
+  const route2 = report.stops[0].routes.find((route) => route.label === "2号");
+
+  assert.deepEqual(route2.calendarVerification, {
+    weekday: "missing",
+    saturday: "missing",
+    holiday: "missing",
+  });
+});
+
+test("stop and corridor totals summarize verified/missing counts per calendar", () => {
+  const data = fixture();
+  data.extra[0].verifiedCalendars = ["weekday"];
+  const report = buildCoverageReport(data, ["停留所A", "停留所B"]);
+
+  const stopA = report.stops.find((stop) => stop.stopName === "停留所A");
+  assert.deepEqual(stopA.calendarSummary, {
+    weekday: { verified: 1, missing: 1 },
+    saturday: { verified: 0, missing: 2 },
+    holiday: { verified: 0, missing: 2 },
+  });
+
+  assert.deepEqual(report.totals.calendars, {
+    weekday: { verified: 2, missing: 1 },
+    saturday: { verified: 1, missing: 2 },
+    holiday: { verified: 1, missing: 2 },
+  });
+});
+
+test("Namba 71/87 production data reports weekday verified, saturday/holiday missing", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const { resolve } = await import("node:path");
+
+  const root = resolve(import.meta.dirname, "..");
+  const [stops, routes, base, extra] = await Promise.all(
+    ["data/stops.json", "data/routes.json", "data/timetable.json", "data/timetable-extra.json"].map(
+      async (path) => JSON.parse(await readFile(resolve(root, path), "utf8")),
+    ),
+  );
+
+  const report = buildCoverageReport({ stops, routes, base, extra }, ["なんば"]);
+  const nambaStop = report.stops[0];
+
+  for (const label of ["71号", "87号"]) {
+    const route = nambaStop.routes.find((r) => r.label === label);
+    assert.ok(route, `${label} route not found`);
+    assert.equal(route.covered, true);
+    assert.deepEqual(route.calendarVerification, {
+      weekday: "verified",
+      saturday: "missing",
+      holiday: "missing",
+    });
+  }
 });
