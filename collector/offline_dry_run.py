@@ -255,6 +255,13 @@ def load_dry_run_bundle(
             f"schemaVersion must be {MANIFEST_SCHEMA_VERSION}; got {root.get('schemaVersion')!r}"
         )
 
+    template_state = root.get("templateState")
+    if template_state is not None and template_state != "ready":
+        raise DryRunError(
+            "manifest templateState must be 'ready' before dry-run; "
+            "incomplete scaffold templates cannot be executed"
+        )
+
     source_url = _require_nonempty_string(root, "sourceUrl", where="manifest")
     target_stop_name = _require_nonempty_string(root, "targetStopName", where="manifest")
     fetched_at = _validate_fetched_at(_require_nonempty_string(root, "fetchedAt", where="manifest"))
