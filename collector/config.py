@@ -21,32 +21,34 @@ PERMISSION_GRANTED = False
 # 例: "2026-09-15 大阪シティバス お客様センターより許可メール受領(担当: ○○)"
 PERMISSION_GRANTED_NOTE = "TODO: 許可が下りたら日付・確認方法をここに記載する"
 
-# --- 収集対象(現時点では未確定。許可後にBus-Vision側の実際の値を確認してから埋める) ---
+# --- 収集対象 ---
 
 # Bus-Vision公開HTMLのベースURL。
-# TODO: 許可後に実際のドメイン・URL構成を確認して設定する(推測で埋めない)。
+# ネットワーク収集の正式許可とproduction collector構成が確定するまでNoneを維持する。
 BASE_URL = None
 
-# 時刻表詳細ページのURLテンプレート。停留所コード・dateDivCd等、実際に
-# 必要なクエリパラメータが未確認のため、プレースホルダのままにしてある。
-# TODO: 許可後に実際のURL構造を確認してから埋める。
+# 時刻表詳細ページのURLテンプレート。
+# 公開URL構造のEvidenceは別Registry/テストへ保存しているが、network collector用の
+# production templateは正式許可と実装Issueなしに有効化しない。
 DIAGRAM_DETAIL_PATH_TEMPLATE = None
 
-# dateDivCd(平日/土曜/休日を表すコード)は未確認。
-# 「推測データ禁止」の方針により、許可後に実際の値を1つずつ確認してから
-# 埋めること。3つとも None のままの場合、collector/convert_to_timetable_csv.py
-# はすべてのレコードをエラーとして報告し、変換を完了しない
-# (=未確認のまま誤ったカレンダー区分でtimetable.jsonが生成されることを防ぐ)。
+# Bus-Vision dateDivCd -> project calendar のVerified値。
+# 正本Evidenceは collector/evidence/calendar_codes.json。
+# Issue #68 / PR #69で公式Bus-Vision公開便詳細を根拠に3区分を確定済み。
+# legacy converter CLIとの互換用に同じ値をここへ同期する。
 DATE_DIV_CD = {
-    "weekday": None,   # TODO: 平日を表すdateDivCdの値
-    "saturday": None,  # TODO: 土曜を表すdateDivCdの値
-    "holiday": None,   # TODO: 休日を表すdateDivCdの値
+    "weekday": "11",
+    "saturday": "13",
+    "holiday": "12",
 }
 
-# 停留所コードの取得方法も未確定(検索ページのクロールが必要か、
-# 一覧ページから機械的に取得できるか等)。
-# TODO: 許可後に確認し、必要であれば stop_code_lookup.py 等を追加する。
-STOP_CODE_SOURCE_NOTE = "TODO: 許可後に停留所コードの取得方法を確認する"
+# 停留所コードの取得方法は全停留所について確定していない。
+# Verified stop identifiersは collector/evidence/stop_timetables.json に限定して保存する。
+# 未確認値を連番や隣接停留所から補完しない。
+STOP_CODE_SOURCE_NOTE = (
+    "Verified stop identifiers live in collector/evidence/stop_timetables.json; "
+    "unverified stop IDs must remain unresolved"
+)
 
 # --- 低速アクセス・リトライ設定 ---
 MIN_DELAY_SEC = 3.0     # 1リクエストごとの最小sleep(秒)
