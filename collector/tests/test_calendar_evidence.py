@@ -1,6 +1,5 @@
 """Verified Calendar Evidence Registry tests — network free."""
 import copy
-import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -25,6 +24,12 @@ SATURDAY_URL = (
     "opeYmd=20250607&revYmd=20250601&routeCd=7100&"
     "timetableDateDivCd=-1&updownCd=1"
 )
+HOLIDAY_URL = (
+    "https://oc.bus-vision.jp/osakacitybus/view/diagramDetail.html?"
+    "corpCd=1&dateDivCd=12&diaCd=9992&lang=0&lineCd=80&"
+    "opeYmd=20260308&revYmd=20260301&routeCd=8000&"
+    "timetableDateDivCd=-1&updownCd=1"
+)
 
 
 def document():
@@ -45,20 +50,42 @@ def document():
                 "observedAt": "2026-09-03",
                 "evidenceNote": "verified saturday regression",
             },
+            {
+                "calendar": "holiday",
+                "dateDivCd": "12",
+                "sourceUrl": HOLIDAY_URL,
+                "observedAt": "2026-09-03",
+                "evidenceNote": "verified Sunday/holiday-bucket regression",
+            },
         ],
     }
 
 
 class CalendarEvidenceTest(unittest.TestCase):
-    def test_repository_registry_has_only_verified_weekday_and_saturday(self):
+    def test_repository_registry_has_all_three_verified_calendars(self):
         entries = load_calendar_evidence()
-        self.assertEqual([(e.calendar, e.date_div_cd) for e in entries], [("weekday", "11"), ("saturday", "13")])
-        self.assertNotIn("holiday", calendar_to_code_map())
-        self.assertNotIn("12", code_to_calendar_map())
+        self.assertEqual(
+            [(e.calendar, e.date_div_cd) for e in entries],
+            [("weekday", "11"), ("saturday", "13"), ("holiday", "12")],
+        )
+        self.assertEqual(entries[2].source_url, HOLIDAY_URL)
 
     def test_maps_are_converter_compatible(self):
-        self.assertEqual(calendar_to_code_map(), {"weekday": "11", "saturday": "13"})
-        self.assertEqual(code_to_calendar_map(), {"11": "weekday", "13": "saturday"})
+        self.assertEqual(
+            calendar_to_code_map(),
+            {"weekday": "11", "saturday": "13", "holiday": "12"},
+        )
+        self.assertEqual(
+            code_to_calendar_map(),
+            {"11": "weekday", "13": "saturday", "12": "holiday"},
+        )
+
+    def test_holiday_evidence_locks_observed_sunday_url(self):
+        entries = validate_calendar_document(document())
+        holiday = next(e for e in entries if e.calendar == "holiday")
+        self.assertEqual(holiday.date_div_cd, "12")
+        self.assertIn("opeYmd=20260308", holiday.source_url)
+        self.assertIn("dateDivCd=12", holiday.source_url)
 
     def test_url_date_div_must_match_declared_code(self):
         bad = document()
@@ -68,13 +95,17 @@ class CalendarEvidenceTest(unittest.TestCase):
 
     def test_non_official_host_is_rejected(self):
         bad = document()
-        bad["entries"][0]["sourceUrl"] = WEEKDAY_URL.replace("oc.bus-vision.jp", "example.invalid")
+        bad["entries"][0]["sourceUrl"] = WEEKDAY_URL.replace(
+            "oc.bus-vision.jp", "example.invalid"
+        )
         with self.assertRaises(CalendarEvidenceError):
             validate_calendar_document(bad)
 
     def test_wrong_path_is_rejected(self):
         bad = document()
-        bad["entries"][0]["sourceUrl"] = WEEKDAY_URL.replace("diagramDetail.html", "diagram.html")
+        bad["entries"][0]["sourceUrl"] = WEEKDAY_URL.replace(
+            "diagramDetail.html", "diagram.html"
+        )
         with self.assertRaises(CalendarEvidenceError):
             validate_calendar_document(bad)
 
@@ -87,7 +118,9 @@ class CalendarEvidenceTest(unittest.TestCase):
     def test_duplicate_code_is_rejected(self):
         bad = document()
         bad["entries"][1]["dateDivCd"] = "11"
-        bad["entries"][1]["sourceUrl"] = SATURDAY_URL.replace("dateDivCd=13", "dateDivCd=11")
+        bad["entries"][1]["sourceUrl"] = SATURDAY_URL.replace(
+            "dateDivCd=13", "dateDivCd=11"
+        )
         with self.assertRaises(CalendarEvidenceError):
             validate_calendar_document(bad)
 
@@ -97,8 +130,10 @@ class CalendarEvidenceTest(unittest.TestCase):
         with self.assertRaises(CalendarEvidenceError):
             validate_calendar_document(bad)
 
-    def test_missing_holiday_is_allowed_and_means_unverified(self):
-        entries = validate_calendar_document(document())
+    def test_missing_holiday_is_allowed_for_incomplete_external_documents(self):
+        partial = document()
+        partial["entries"] = partial["entries"][:2]
+        entries = validate_calendar_document(partial)
         self.assertEqual(len(entries), 2)
         self.assertFalse(any(e.calendar == "holiday" for e in entries))
 
