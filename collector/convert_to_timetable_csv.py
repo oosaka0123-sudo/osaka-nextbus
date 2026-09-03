@@ -2,40 +2,28 @@
 """
 collector/convert_to_timetable_csv.py
 ---------------------------------------------------------
-収集済みの DepartureRecord 群(JSON配列ファイル)を、既存の
-scripts/timetable-csv-to-json.mjs がそのまま読み込める long format CSV
-(routeId,direction,destination,calendar,time) に変換する。
+DepartureRecord JSON arrays are converted to the existing long-format CSV
+(routeId,direction,destination,calendar,time) used by timetable-csv-to-json.mjs.
 
-    Bus-Vision (許可後)                     このスクリプト                既存ツール(そのまま流用)
-    diagramDetail.html
-        │ parser.py (要許可後実装)
-        ▼
-    収集レコードJSON ─────────────► timetable.csv ─────────────► data/timetable.json
-    (stop_name/line_no/...)   convert_to_timetable_csv.py   scripts/timetable-csv-to-json.mjs
+This module is completely network-free. It reads only local JSON data.
 
-このスクリプト自体はネットワークアクセスを一切行わない
-(既存の data/stops.json / data/routes.json をローカルファイルとして
-読み込むだけ)。
+Safety rules:
+- stop_name must match data/stops.json after NFKC + trim only.
+- line_no first requires an exact route label at the same stop. If the Bus-Vision value
+  is digits only (e.g. "87") and exact matching fails, one deterministic display-format
+  fallback ("87号") is allowed. No fuzzy matching or route guessing is performed.
+- service/dateDivCd must exist in an explicitly supplied calendar mapping. Unknown codes
+  fail closed.
+- all row errors are collected; callers must not write output when any error exists.
 
-変換ルール:
-- stop_name → data/stops.json の name から stopId を検索する
-  (NFKC正規化・前後空白除去のみ行い、表記ゆれで一致しない場合は
-  推測せずエラーとして報告する)。
-- line_no   → 同じ stopId を持つ data/routes.json の label と比較して
-  routeId (routes.json の id) を検索する。
-- service(dateDivCd等の生コード) → config.DATE_DIV_CD の
-  weekday/saturday/holiday マッピングで平日/土曜/休日に変換する。
-  マッピングが未確定(None)のままの値は必ずエラーになる
-  (config.py 側で許可後に実際の値を確認して埋めるまで、
-  このスクリプトは1件も変換を完了させない)。
-
-見つからない・変換できない行はスキップせず、全件のエラーを収集してから
-変換を中断する(scripts/timetable-csv-to-json.mjs と同じ方針。
-架空マッチ・部分的な変換結果を残さないため)。
+The legacy CLI still supports collector.config.DATE_DIV_CD for future production use, but
+`--calendar-registry` selects the separate Verified Calendar Evidence Registry without
+modifying production config.py.
 """
 import argparse
 import csv
 import json
+import re
 import sys
 import unicodedata
 from pathlib import Path
@@ -46,15 +34,48 @@ def _normalize(s: str) -> str:
 
 
 def load_stop_index(stops_path: Path) -> dict:
-    """{ 正規化した停留所名: stopId } を返す。"""
+    """Return `{normalized stop name: stopId}` and reject duplicate normalized names."""
     stops = json.loads(stops_path.read_text(encoding="utf-8"))
-    return {_normalize(s["name"]): s["id"] for s in stops}
+    result = {}
+    for stop in stops:
+        key = _normalize(stop["name"])
+        stop_id = stop["id"]
+        if key in result and result[key] != stop_id:
+            raise ValueError(f"duplicate normalized stop name {key!r} in {stops_path}")
+        result[key] = stop_id
+    return result
 
 
 def load_route_index(routes_path: Path) -> dict:
-    """{ (stopId, 正規化した系統名): routeId } を返す。"""
+    """Return `{(stopId, normalized route label): routeId}` and reject duplicates."""
     routes = json.loads(routes_path.read_text(encoding="utf-8"))
-    return {(r["stopId"], _normalize(r["label"])): r["id"] for r in routes}
+    result = {}
+    for route in routes:
+        key = (route["stopId"], _normalize(route["label"]))
+        route_id = route["id"]
+        if key in result and result[key] != route_id:
+            raise ValueError(f"duplicate stop/route label {key!r} in {routes_path}")
+        result[key] = route_id
+    return result
+
+
+def resolve_route_id(stop_id: str, line_no: str, route_index: dict):
+    """Resolve one route ID using exact match or one explicit Osaka-bus display suffix.
+
+    `87` -> `87号` is a formatting bridge, not a fuzzy guess. We never strip arbitrary
+    text, compare destinations, use nearby stops, or choose between multiple fuzzy matches.
+    """
+    normalized = _normalize(line_no)
+    exact = route_index.get((stop_id, normalized))
+    if exact is not None:
+        return exact
+
+    if re.fullmatch(r"\d+", normalized):
+        with_suffix = route_index.get((stop_id, f"{normalized}号"))
+        if with_suffix is not None:
+            return with_suffix
+
+    return None
 
 
 REQUIRED_RECORD_FIELDS = (
@@ -68,13 +89,13 @@ REQUIRED_RECORD_FIELDS = (
 
 
 def convert(records, stop_index: dict, route_index: dict, date_div_cd_map: dict):
-    """records(dict のリスト) → (csv_rows, errors) を返す。
+    """Convert record dicts to `(csv_rows, errors)` using an explicit calendar map.
 
-    errors が1件でもあれば csv_rows は使用しないこと
-    (呼び出し側は必ず errors を先にチェックする)。
+    `date_div_cd_map` has the existing `{calendar: dateDivCd}` shape. It may be partial:
+    missing calendar codes are intentionally unverified and any record using them fails.
     """
     code_to_calendar = {
-        code: name for name, code in date_div_cd_map.items() if code is not None
+        str(code): name for name, code in date_div_cd_map.items() if code is not None
     }
 
     csv_rows = []
@@ -97,8 +118,7 @@ def convert(records, stop_index: dict, route_index: dict, date_div_cd_map: dict)
             )
             continue
 
-        line_key = (stop_id, _normalize(rec["line_no"]))
-        route_id = route_index.get(line_key)
+        route_id = resolve_route_id(stop_id, rec["line_no"], route_index)
         if route_id is None:
             errors.append(
                 f"{loc}: data/routes.json に一致する系統が見つかりません"
@@ -106,11 +126,11 @@ def convert(records, stop_index: dict, route_index: dict, date_div_cd_map: dict)
             )
             continue
 
-        calendar = code_to_calendar.get(rec["service"])
+        calendar = code_to_calendar.get(str(rec["service"]))
         if calendar is None:
             errors.append(
                 f"{loc}: service(\"{rec['service']}\")に対応する平日/土曜/休日の"
-                "マッピングが config.DATE_DIV_CD に未設定です(推測禁止のため停止)"
+                "verified mappingがありません(推測禁止のため停止)"
             )
             continue
 
@@ -128,6 +148,8 @@ def convert(records, stop_index: dict, route_index: dict, date_div_cd_map: dict)
 
 
 def write_csv(rows, output_path: Path) -> None:
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(
             f, fieldnames=["routeId", "direction", "destination", "calendar", "time"]
@@ -136,21 +158,37 @@ def write_csv(rows, output_path: Path) -> None:
         writer.writerows(rows)
 
 
+def _load_cli_calendar_map(calendar_registry):
+    if calendar_registry is not None:
+        from .bus_vision.calendar_evidence import calendar_to_code_map
+
+        return calendar_to_code_map(calendar_registry)
+
+    # Legacy/future production path. Keeping this does not change config or permissions.
+    from . import config
+
+    return config.DATE_DIV_CD
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--input", required=True, help="収集済みレコードのJSON配列ファイル")
     ap.add_argument("--stops", default="data/stops.json")
     ap.add_argument("--routes", default="data/routes.json")
-    ap.add_argument("--output", required=True, help="出力するCSVファイル(timetable-csv-to-json.mjsへの入力)")
+    ap.add_argument("--output", required=True, help="出力するlong-format CSV")
+    ap.add_argument(
+        "--calendar-registry",
+        default=None,
+        help="Verified calendar evidence JSON。指定時はconfig.DATE_DIV_CDを使用しない",
+    )
     args = ap.parse_args(argv)
-
-    from . import config  # 遅延importでテストからの直接呼び出しを妨げない
 
     records = json.loads(Path(args.input).read_text(encoding="utf-8"))
     stop_index = load_stop_index(Path(args.stops))
     route_index = load_route_index(Path(args.routes))
+    date_div_cd_map = _load_cli_calendar_map(args.calendar_registry)
 
-    rows, errors = convert(records, stop_index, route_index, config.DATE_DIV_CD)
+    rows, errors = convert(records, stop_index, route_index, date_div_cd_map)
 
     if errors:
         print(
@@ -158,16 +196,14 @@ def main(argv=None) -> int:
             "(推測でのマッチ・補完はしません):",
             file=sys.stderr,
         )
-        for e in errors[:30]:
-            print(f"  {e}", file=sys.stderr)
+        for error in errors[:30]:
+            print(f"  {error}", file=sys.stderr)
         if len(errors) > 30:
             print(f"  ...ほか{len(errors) - 30}件", file=sys.stderr)
         return 1
 
     write_csv(rows, Path(args.output))
     print(f"変換完了: {len(rows)}件のCSV行を書き出しました → {args.output}")
-    print("続けて次のコマンドで data/timetable.json に変換してください:")
-    print(f"  node scripts/timetable-csv-to-json.mjs --input {args.output} --output data/timetable.json")
     return 0
 
 
