@@ -39,4 +39,29 @@ strLineList=71-1-1_87-1-1
 6. `python3 -m unittest discover -s collector/tests -t .` を実行する。
 7. `Test collector` がPASSしたPRだけマージする。
 
+## Offline dry-run
+
+Registryの登録対象だけを確認する:
+
+```bash
+python3 -m collector.offline_dry_run --list-targets
+```
+
+保存済みHTML bundleを検証する:
+
+```bash
+python3 -m collector.offline_dry_run --manifest /path/to/manifest.json
+```
+
+`offline_dry_run` 自身はHTTPアクセスを行わない。manifestには以下を明示する。
+
+- Registryに存在する正確な `sourceUrl`
+- `targetStopName`
+- timezone付き `fetchedAt`
+- ローカル保存済み `diagram.html` のファイルパス
+- 各 `diagramDetail.html` の実URLとローカルファイルパスのmapping
+- `StopTimetableSelectorConfig` / `TripDetailSelectorConfig` に対応するDOM selector
+
+selectorはproduction既定値を持たず、manifestで毎回明示する。Registry未登録URL、対象停留所名不一致、ローカルHTML欠損、時刻不一致などはfail closedする。成功時は `DepartureRecord.as_dict()` 相当のJSONを標準出力するだけで、`data/timetable*.json` は更新しない。
+
 このRegistryは「候補データベース」ではなく、**確認済み公開URLの証拠台帳**です。
