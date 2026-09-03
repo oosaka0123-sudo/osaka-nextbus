@@ -8,6 +8,7 @@ on:
       - "index.html"
       - "sw.js"
       - "scripts/validate-data.mjs"
+      - "scripts/validate-partial-calendar.test.mjs"
       - "scripts/report-corridor-coverage.mjs"
       - "scripts/report-corridor-coverage.test.mjs"
       - "tests/**"
@@ -22,6 +23,7 @@ on:
       - "index.html"
       - "sw.js"
       - "scripts/validate-data.mjs"
+      - "scripts/validate-partial-calendar.test.mjs"
       - "scripts/report-corridor-coverage.mjs"
       - "scripts/report-corridor-coverage.test.mjs"
       - "tests/**"
@@ -47,6 +49,9 @@ jobs:
       - name: Validate timetable data
         run: node scripts/validate-data.mjs
 
+      - name: Test partial calendar validation
+        run: npm run test:partial-calendar-validator
+
       - name: Test corridor coverage audit
         run: npm run test:coverage-audit
 
@@ -58,6 +63,7 @@ jobs:
           node --check js/timetable-loader.js
           node --check js/data.js
           node --check js/app.js
+          node --check scripts/validate-partial-calendar.test.mjs
           node --check scripts/report-corridor-coverage.mjs
 
       - name: Install browser test dependencies
