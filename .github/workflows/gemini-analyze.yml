@@ -7,17 +7,30 @@ on:
         description: "GitHub Issue number to analyze"
         required: true
         type: string
+  issues:
+    types:
+      - labeled
 
 permissions:
   contents: read
   issues: write
 
 concurrency:
-  group: gemini-analyze-issue-${{ inputs.issue_number }}
+  group: gemini-analyze-issue-${{ inputs.issue_number || github.event.issue.number }}
   cancel-in-progress: false
 
 jobs:
   analyze:
+    if: >-
+      ${{
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event_name == 'issues' &&
+          github.event.action == 'labeled' &&
+          github.event.label.name == 'status:doing' &&
+          contains(github.event.issue.labels.*.name, 'agent:gemini')
+        )
+      }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -26,6 +39,19 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: false
+
+      - name: Resolve target Issue
+        id: target
+        env:
+          DISPATCH_ISSUE: ${{ inputs.issue_number }}
+          EVENT_ISSUE: ${{ github.event.issue.number }}
+        run: |
+          ISSUE_NUMBER="${DISPATCH_ISSUE:-$EVENT_ISSUE}"
+          if ! [[ "$ISSUE_NUMBER" =~ ^[0-9]+$ ]]; then
+            echo "::error::Invalid or missing Issue number."
+            exit 1
+          fi
+          echo "issue_number=$ISSUE_NUMBER" >> "$GITHUB_OUTPUT"
 
       - name: Verify Gemini API secret
         env:
@@ -39,7 +65,7 @@ jobs:
       - name: Prepare issue context
         env:
           GH_TOKEN: ${{ github.token }}
-          ISSUE_NUMBER: ${{ inputs.issue_number }}
+          ISSUE_NUMBER: ${{ steps.target.outputs.issue_number }}
         run: |
           mkdir -p .gemini
           gh issue view "$ISSUE_NUMBER" \
@@ -54,7 +80,7 @@ jobs:
           GEMINI_CLI_TRUST_WORKSPACE: "true"
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
-          github_issue_number: ${{ inputs.issue_number }}
+          github_issue_number: ${{ steps.target.outputs.issue_number }}
           upload_artifacts: "false"
           prompt: |-
             You are the Heavy Analyzer in the osaka-nextbus multi-agent development system.
@@ -131,7 +157,7 @@ jobs:
       - name: Post validated handoff to Issue
         env:
           GH_TOKEN: ${{ github.token }}
-          ISSUE_NUMBER: ${{ inputs.issue_number }}
+          ISSUE_NUMBER: ${{ steps.target.outputs.issue_number }}
           GEMINI_RESULT: ${{ steps.gemini.outputs.summary }}
         run: |
           printf '%s\n' "$GEMINI_RESULT" > /tmp/gemini-result.md
