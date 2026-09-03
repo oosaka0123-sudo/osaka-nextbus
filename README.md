@@ -99,6 +99,8 @@ osaka-nextbus/
 │   └── README.md
 ├── scripts/
 │   ├── validate-data.mjs
+│   ├── report-corridor-coverage.mjs
+│   ├── report-corridor-coverage.test.mjs
 │   ├── convert-ksj-p11.mjs
 │   └── timetable-csv-to-json.mjs
 ├── tests/
@@ -137,6 +139,36 @@ osaka-nextbus/
 
 `manifest.json` や `collector/tests/fixtures/*.json` など、上記5ファイル以外のJSONは `validate-data.mjs` の対象ではありません。
 
+## 優先区間のcoverage監査
+
+ユーザー最優先区間の「停留所×系統に時刻表が収録されているか」を、既存データだけからオフラインで確認できます。未収録routeを架空時刻で補完する機能ではありません。
+
+既定対象は `なんば / 鶴町一丁目 / 鶴町二丁目 / 鶴町三丁目 / 鶴町四丁目` です。
+
+```bash
+node scripts/report-corridor-coverage.mjs
+```
+
+JSON出力:
+
+```bash
+node scripts/report-corridor-coverage.mjs --json
+```
+
+任意の停留所だけを指定する場合:
+
+```bash
+node scripts/report-corridor-coverage.mjs なんば 鶴町四丁目
+```
+
+監査スクリプトは `timetable.json` と `timetable-extra.json` をブラウザと同じルールで結合し、同一 `routeId + direction + destination` はextra側を優先してcoverageを判定します。存在しない停留所名や同名停留所で一意に決められない場合はfail closedします。
+
+監査ロジックの自動テスト:
+
+```bash
+npm run test:coverage-audit
+```
+
 ## ブラウザ回帰テスト
 
 Playwright（Chromium）で、現在は次の8シナリオを自動テストします。
@@ -148,15 +180,15 @@ Playwright（Chromium）で、現在は次の8シナリオを自動テストし�
 5. 停留所・系統・方面の `localStorage` 保存と再読み込み復元
 6. GPS成功時に近い順10停留所へ絞り込まれること
 7. GPS拒否時に全停留所から手動選択できること
-8. Service Worker v26でオフライン時もextra側91号を利用できること
+8. Service Worker v29でオフライン時もextra側91号を利用できること
 
 各テストでは可能な範囲で `pageerror` / `console.error` も監視します。
 
-GitHub Actionsの `.github/workflows/validate-data.yml` がpush/PR時に自動実行し、データvalidator、JavaScript構文、Playwright Chromium回帰をまとめて検査します。npm依存は `package-lock.json` をコミットし、CIでは `npm ci` を使って固定します。
+GitHub Actionsの `.github/workflows/validate-data.yml` がpush/PR時に自動実行し、データvalidator、coverage audit、JavaScript構文、Playwright Chromium回帰をまとめて検査します。npm依存は `package-lock.json` をコミットし、CIでは `npm ci` を使って固定します。
 
 ## Service Worker
 
-現在のキャッシュ版は **v26** です。
+現在のキャッシュ版は **v29** です。
 
 オンライン時はネットワークを優先し、成功したレスポンスをキャッシュします。オフライン時のみキャッシュへフォールバックします。
 
@@ -189,6 +221,8 @@ GitHub Actionsの `.github/workflows/validate-data.yml` がpush/PR時に自動�
 
 ```bash
 node scripts/validate-data.mjs
+npm run test:coverage-audit
+node scripts/report-corridor-coverage.mjs
 npm ci
 npx playwright install chromium
 npm run test:smoke
