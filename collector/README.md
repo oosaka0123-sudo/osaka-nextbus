@@ -4,11 +4,20 @@
 Bus-Vision公開HTMLから方面・行先・発車時刻を収集し、既存のPWA
 (`data/timetable.json`)へ接続するための**準備コード**です。
 
-**現時点(2026-08-29)では大阪シティバスへ利用許可を申請中であり、
-このディレクトリのコードは一切ネットワークアクセスを行いません。**
-`collector/config.py` の `PERMISSION_GRANTED` が `False` である限り、
-`http_client.py` がネットワークソケットを開く直前で必ず例外を送出して
-停止します(robots.txt の取得すら行いません)。
+**2026-09-04時点でも `collector/config.py` の `PERMISSION_GRANTED` は `False` です。**
+そのため、このディレクトリのnetwork collectorはネットワークアクセスを開始しません。
+`http_client.py` がソケットを開く前に必ず例外を送出して停止します
+(robots.txt の取得すら行いません)。
+
+一方で、ネットワークを使わない公開Evidence確認・Registry・offline dry-run・変換・テストは
+進んでいます。Bus-Visionの曜日コードはVerified済みで、正本は
+`collector/evidence/calendar_codes.json` です。
+
+```text
+weekday  = 11
+saturday = 13
+holiday  = 12
+```
 
 本番PWA(`index.html` / `css/` / `js/*.js` / `sw.js` / `data/*.json`)とは
 完全に独立しており、このディレクトリを一切実行しなくてもPWAの動作には
@@ -17,9 +26,9 @@ Bus-Vision公開HTMLから方面・行先・発車時刻を収集し、既存の
 ## 全体像
 
 ```
-Bus-Vision公開HTML(許可後)
+Bus-Vision公開HTML(正式許可後のnetwork collection)
     │  bus_vision/parser.py (アルゴリズムは実装・テスト済み。
-    │                         SelectorConfigは許可後に実HTMLへ合わせて用意する)
+    │                         production SelectorConfigは実HTML確認後に用意する)
     ▼
 収集レコードJSON (stop_name / departure_time / line_no / headsign /
                    direction / service / source_url / fetched_at)
@@ -35,7 +44,7 @@ BusDataSource (js/data.js) → 停留所 → 系統 → 行先 → 次3便
 ```
 
 `bus_vision/parser.py`(HTML解析)と `convert_to_timetable_csv.py`
-(JSON→CSV変換)を新規に用意し、`timetable.csv → data/timetable.json` は
+(JSON→CSV変換)を用意し、`timetable.csv → data/timetable.json` は
 既存の `scripts/timetable-csv-to-json.mjs`(平日/土曜/休日の振り分け・
 時刻順ソート・重複除去・不完全な行のエラー検出を既に実装済み)を
 そのまま再利用しています。二重実装を避け、本番PWAへの接続点を
@@ -50,29 +59,32 @@ collector本体(ネットワーク層・許可ゲート・チェックポイン�
 
 | ファイル | 役割 | 現状 |
 |---|---|---|
-| `config.py` | 許可フラグ・低速アクセス設定・未確定項目(BASE_URL/dateDivCd等) | 実装済み(値はTODOプレースホルダ) |
+| `config.py` | 許可フラグ・低速アクセス設定・legacy calendar mapping | `PERMISSION_GRANTED=False`。`DATE_DIV_CD` はVerified Registryと同期済み(11/13/12)。network `BASE_URL` / templateは未有効 |
 | `models.py` | 収集レコード `DepartureRecord`(8フィールド)の定義・検証 | 実装済み |
 | `http_client.py` | 許可ゲート付き低速HTTPクライアント(sleep+ジッタ、指数バックオフ、最大3回リトライ、4xxは回避しない) | 実装済み |
 | `checkpoint.py` | SQLiteによる取得済みURL管理(重複回避・途中再開) | 実装済み |
-| `convert_to_timetable_csv.py` | 収集レコードJSON → timetable.csv 変換(stops.json/routes.jsonと突合) | 実装済み・テスト済み |
-| `run_collect.py` | 収集のエントリポイント | 許可ゲートのみ実装済み、収集ループ本体は未実装 |
+| `convert_to_timetable_csv.py` | 収集レコードJSON → timetable.csv 変換(stops.json/routes.jsonと突合) | 実装済み・テスト済み。未知calendar codeはfail closed |
+| `run_collect.py` | 収集のエントリポイント | 許可ゲートのみ実装済み、network収集ループ本体は未実装 |
 | `bus_vision/html_dom.py` | 標準ライブラリのみで書いた最小HTML木構造パーサー(find_all/get_text) | 実装済み・テスト済み |
-| `bus_vision/identifiers.py` | URLから stopCd/poleCd/strLineList/dateDivCd を抽出 | 実装済み・テスト済み(パラメータ名自体は要検証) |
-| `bus_vision/selectors.py` | `diagramDetail.html` のDOM構造を表す設定 `SelectorConfig` | 型のみ実装。**実サイト向けの既定値は意図的に持たせていない**(推測を本番コードに固定しないため) |
-| `bus_vision/parser.py` | `SelectorConfig` に従ってHTMLからDepartureRecordを抽出する解析アルゴリズム | **実装済み・テスト済み**(フィクスチャHTMLで検証)。実サイトへの適用は`SelectorConfig`を用意するだけでよい |
-| `tests/` | 上記のうちネットワーク不要な部分のユニットテスト・統合テスト(フィクスチャのみ使用、51件全PASS) | 実装済み・全件PASS |
+| `bus_vision/identifiers.py` | 公開URLから stopCd/poleCd/strLineList/dateDivCd 等を抽出 | 実装済み・テスト済み。公開実例でquery keyをOBSERVED済み |
+| `bus_vision/selectors.py` | `diagramDetail.html` のDOM構造を表す設定 `SelectorConfig` | 型のみ実装。**実サイト向けのproduction既定値は意図的に持たせていない** |
+| `bus_vision/parser.py` | `SelectorConfig` に従ってHTMLからDepartureRecordを抽出する解析アルゴリズム | **実装済み・テスト済み**。production SelectorConfigはEvidence確認後に用意する |
+| `evidence/` | Verified stop URL / calendar code の証拠台帳 | 実装済み。候補値やAI推測は禁止 |
+| `tests/` | ネットワーク不要なユニット/統合テスト | 2026-09-04時点で **136 tests PASS** |
 
-### なぜ「解析済み」なのに実データではまだ動かないのか
+### なぜ「解析済み」なのにnetwork実データ収集はまだ動かないのか
 
-`bus_vision/parser.py` の**解析アルゴリズム**(HTMLの木構造をたどり、
-系統ブロックごとに系統番号・行先・時刻を取り出し、時刻として解釈できない
-値やブロックが1件も無い場合は`ParseError`で停止する、という処理)は
-実装・テスト済みです。未確定なのは、その解析が「どのタグ・どのclass名を
-見ればよいか」という**具体的な `SelectorConfig` の値**だけであり、これは
-実際の `diagramDetail.html` を目視確認しないと分からないため、
-本番コード側にはデフォルト値を一切持たせていません。
-許可後にすることは、新しい解析ロジックを書くことではなく、
-実HTMLを見て `SelectorConfig(...)` の値を埋めるだけです。
+`bus_vision/parser.py` の**解析アルゴリズム**は実装・テスト済みです。
+一方、network collectorを安全に有効化するには次が別途必要です。
+
+- 正式な利用許可
+- network collector用 `BASE_URL` / URL template
+- 対象停留所がVerified Evidence Registryに存在すること
+- 実HTMLに対応するproduction `SelectorConfig`
+- `run_collect.py` の収集ループ実装
+
+曜日コード自体は未確認項目ではありません。`weekday=11 / saturday=13 / holiday=12` を
+Verified Registryに保存し、legacy `config.DATE_DIV_CD` と一致することもテストで固定しています。
 
 ## 安全設計(要件との対応)
 
@@ -86,8 +98,10 @@ collector本体(ネットワーク層・許可ゲート・チェックポイン�
 | 4xx時は無理に回避しない | `HttpForbiddenError` を送出してそのまま停止(リトライしない) |
 | SQLiteチェックポイント / 途中再開 / 同一URL再取得防止 | `checkpoint.py` |
 | 取得URL/取得日時記録 | `checkpoint.py`(url, status, fetched_at, detail) |
-| 推測データ禁止 | `dateDivCd`・停留所コード取得方法は `config.py` にプレースホルダのまま。`bus_vision/selectors.py` も実サイト向けの既定値を持たない。`convert_to_timetable_csv.py` は不一致・未設定を必ずエラーとして報告し、変換を中断する |
-| HTML解析失敗時は停止 | `bus_vision/parser.py` は、系統ブロックが0件・時刻セルが0件・時刻として解釈できない文字列のいずれかがあれば `ParseError` を送出して停止する(実装・テスト済み) |
+| 曜日コードの推測禁止 | `evidence/calendar_codes.json` のVerified値だけを利用。未知codeは変換時にfail closed |
+| 停留所IDの推測禁止 | `evidence/stop_timetables.json` のVerified値のみ採用。隣接番号や第三者情報から補完しない |
+| production DOM推測禁止 | `bus_vision/selectors.py` は実サイト向け既定値を持たず、Evidenceで確認したSelectorConfigだけを明示的に渡す |
+| HTML解析失敗時は停止 | `bus_vision/parser.py` は、必要要素が0件・時刻解釈不能等で `ParseError` を送出して停止 |
 
 ## テストの実行方法(ネットワークアクセスなし)
 
@@ -97,34 +111,32 @@ collector本体(ネットワーク層・許可ゲート・チェックポイン�
 python3 -m unittest discover -s collector/tests -t .
 ```
 
-すべて `collector/tests/fixtures/` 内の合成データ(実際のBus-Visionの
-データは一切含まない)だけを使い、本番の `data/*.json` には触れません。
-`http_client` のテストは `urllib.request.urlopen` をモックし、
-実際にネットワークへアクセスしていないことを `assert_not_called()` で
-検証しています。`test_bus_vision_end_to_end.py` のみ、既存の
-`scripts/timetable-csv-to-json.mjs` を検証するために `node` コマンドを
-子プロセスとして呼び出します(ネットワークアクセスは無し。`node` が
-無い環境では自動的にスキップされる)。2026-08-29時点で51件全PASS。
+テストはローカルfixture / Verified Registry / production indexのread-only検証を使い、
+network collectorを起動しません。`http_client` のテストは `urllib.request.urlopen` を
+モックし、実際にネットワークへアクセスしていないことを検証します。
+`test_bus_vision_end_to_end.py` では既存の `scripts/timetable-csv-to-json.mjs` を
+検証するため `node` コマンドを子プロセスとして呼び出しますが、ネットワークは使用しません。
 
-## 許可後にやること
+**2026-09-04時点のGitHub Actions `Test collector` は136 tests PASS。**
+同じsuite内で `PERMISSION_GRANTED=False` も回帰確認しています。
+
+## 正式許可後にやること
 
 1. `config.py` の `PERMISSION_GRANTED` を `True` にし、
    `PERMISSION_GRANTED_NOTE` に許可日・確認方法(受領したメール等)を記載する。
-2. `config.py` の `BASE_URL` / `DIAGRAM_DETAIL_PATH_TEMPLATE` / `DATE_DIV_CD`
-   (平日/土曜/休日のコード) / `STOP_CODE_SOURCE_NOTE`(停留所コードの
-   取得方法)を、実際にBus-Vision公開ページを確認して埋める(推測禁止)。
-3. `http_client.check_robots_txt()` で robots.txt を確認し、対象パスへの
+2. `config.py` の `BASE_URL` / `DIAGRAM_DETAIL_PATH_TEMPLATE` と、対象停留所の
+   Verified Registry / `STOP_CODE_SOURCE_NOTE` を確認する。未確認値を推測で埋めない。
+3. `evidence/calendar_codes.json` と `config.DATE_DIV_CD` が
+   `weekday=11 / saturday=13 / holiday=12` で一致していることを確認する。
+4. `http_client.check_robots_txt()` で robots.txt を確認し、対象パスへの
    アクセスが許可されているか確認する。あわせて利用規約を目視で確認する。
-4. 実際の `diagramDetail.html` を目視確認し、
-   `collector/bus_vision/selectors.py` の `SelectorConfig` を実際のDOM
-   構造(タグ名・class名)に合わせて組み立てる。解析アルゴリズム自体
-   (`bus_vision/parser.py`)は実装・テスト済みのため、通常は
-   コード変更ではなく `SelectorConfig` の値を用意するだけでよい
-   (想定外の構造であれば `ParseError` が送出されるので、その場合のみ
-   `bus_vision/parser.py` 側の実装も見直す)。
-5. `run_collect.py` の収集ループ本体を実装し、低速収集を実行する
+5. 実際の `diagramDetail.html` を目視確認し、
+   `collector/bus_vision/selectors.py` の `SelectorConfig` を実際のDOM構造
+   (タグ名・class名)に合わせて組み立てる。解析アルゴリズム自体
+   (`bus_vision/parser.py`)は実装・テスト済み。
+6. `run_collect.py` の収集ループ本体を実装し、低速収集を実行する
    (`checkpoint.py` で重複回避・途中再開しながら)。
-6. 収集結果(`DepartureRecord` のJSON配列)を
+7. 収集結果(`DepartureRecord` のJSON配列)を
    `collector/convert_to_timetable_csv.py` で `timetable.csv` に変換する。
 
    ```bash
@@ -135,25 +147,24 @@ python3 -m unittest discover -s collector/tests -t .
      --output timetable.csv
    ```
 
-7. 既存ツールで `data/timetable.json` に変換する。
+8. 既存ツールで `data/timetable.json` に変換する。
 
    ```bash
    node scripts/timetable-csv-to-json.mjs --input timetable.csv --output data/timetable.json
    ```
 
-8. `data/metadata.json` の `lastUpdated` を更新する。
-9. CLAUDE.md記載の通常のPWA動作確認チェックリスト(ローカルサーバー起動・
-   停留所/系統/方面選択・次3便表示・平日/土曜/休日・深夜またぎ・
-   JSエラー0件・Service Worker等)をブラウザで実施する。
-10. 問題がなければ commit / push する。
+9. `data/metadata.json` の `lastUpdated` を更新する。
+10. CLAUDE.md記載の通常のPWA動作確認チェックリスト(ローカルサーバー起動・
+    停留所/系統/方面選択・次3便表示・平日/土曜/休日・深夜またぎ・
+    JSエラー0件・Service Worker等)をブラウザで実施する。
+11. 問題がなければ commit / push する。
 
 ## 出典・利用条件に関する注意
 
-- 収集対象は Bus-Vision の**公開HTMLページ**のみとし、非公開API・
+- network収集対象は Bus-Vision の**公開HTMLページ**のみとし、非公開API・
   認証が必要なエンドポイントの解析・利用は行わない。
 - 大阪シティバスからの利用許可の内容(頻度・範囲等の条件)に、
   ここに記載した設定(低速アクセス・リトライ回数等)よりも厳しい制約が
   含まれる場合は、許可条件を優先して `config.py` の値を調整すること。
 - 収集したデータは `data/timetable.json` へ反映する前に、必ず内容を
-  目視確認すること(架空データを紛れ込ませないという本リポジトリの
-  一貫した方針のため)。
+  目視確認すること(架空データを紛れ込ませないという本リポジトリの方針)。
