@@ -267,3 +267,123 @@ test("Service Worker v29でオフラインでもextra側91号を利用できる"
   await context.setOffline(false);
   expectNoBrowserErrors(errors);
 });
+
+async function freezeNow(page, iso) {
+  const fixedNow = new Date(iso).getTime();
+  await page.addInitScript(({ now }) => {
+    const OriginalDate = Date;
+    class MockDate extends OriginalDate {
+      constructor(...args) {
+        super(...(args.length ? args : [now]));
+      }
+      static now() {
+        return now;
+      }
+    }
+    window.Date = MockDate;
+  }, { now: fixedNow });
+}
+
+async function installPartial71Timetable(page, { weekday, verifiedCalendars }) {
+  await page.route("**/data/timetable.json", async (route) => {
+    const response = await route.fetch();
+    const entries = await response.json();
+    const target = entries.find(
+      (entry) =>
+        entry.routeId === "鶴町一丁目-3a81dc__71号" &&
+        entry.direction === "なんば方面"
+    );
+    if (!target) throw new Error("partial-calendar test target not found");
+    target.weekday = weekday;
+    target.saturday = [];
+    target.holiday = [];
+    if (verifiedCalendars === undefined) delete target.verifiedCalendars;
+    else target.verifiedCalendars = verifiedCalendars;
+    await route.fulfill({ response, json: entries });
+  });
+}
+
+test("weekdayだけVerifiedでも平日中はVerified便を表示する", async ({ page }) => {
+  const errors = attachErrorCollector(page);
+  await freezeNow(page, "2026-09-01T10:00:00+09:00");
+  await installPartial71Timetable(page, {
+    weekday: ["10:05", "10:15", "10:25"],
+    verifiedCalendars: ["weekday"],
+  });
+
+  await waitForData(page);
+  await selectRoute(
+    page,
+    "鶴町一丁目-3a81dc",
+    "鶴町一丁目-3a81dc__71号",
+    "なんば方面"
+  );
+
+  await expect(page.locator("#time-0")).toHaveText("10:05");
+  await expect(page.locator("#time-1")).toHaveText("10:15");
+  await expect(page.locator("#time-2")).toHaveText("10:25");
+  await expect(page.locator("#pending-message")).toBeHidden();
+  expectNoBrowserErrors(errors);
+});
+
+test("weekdayだけVerifiedなら未確認土曜は準備中で止まる", async ({ page }) => {
+  const errors = attachErrorCollector(page);
+  await freezeNow(page, "2026-09-05T10:00:00+09:00");
+  await installPartial71Timetable(page, {
+    weekday: ["10:05", "10:15", "10:25"],
+    verifiedCalendars: ["weekday"],
+  });
+
+  await waitForData(page);
+  await selectRoute(
+    page,
+    "鶴町一丁目-3a81dc",
+    "鶴町一丁目-3a81dc__71号",
+    "なんば方面"
+  );
+
+  await expect(page.locator("#next-bus")).toBeHidden();
+  await expect(page.locator("#pending-message")).toBeVisible();
+  expectNoBrowserErrors(errors);
+});
+
+test("金曜終便後は未知の週末を飛ばして月曜便を表示しない", async ({ page }) => {
+  const errors = attachErrorCollector(page);
+  await freezeNow(page, "2026-09-04T23:30:00+09:00");
+  await installPartial71Timetable(page, {
+    weekday: ["23:00"],
+    verifiedCalendars: ["weekday"],
+  });
+
+  await waitForData(page);
+  await selectRoute(
+    page,
+    "鶴町一丁目-3a81dc",
+    "鶴町一丁目-3a81dc__71号",
+    "なんば方面"
+  );
+
+  await expect(page.locator("#next-bus")).toBeHidden();
+  await expect(page.locator("#pending-message")).toBeVisible();
+  expectNoBrowserErrors(errors);
+});
+
+test("verifiedCalendars省略の既存entryは従来通り全曜日Verified扱い", async ({ page }) => {
+  const errors = attachErrorCollector(page);
+  await freezeNow(page, "2026-09-05T10:00:00+09:00");
+  await installPartial71Timetable(page, {
+    weekday: ["10:05", "10:15", "10:25"],
+    verifiedCalendars: undefined,
+  });
+
+  await page.route("**/data/timetable.json", async (route) => route.continue());
+  await waitForData(page);
+
+  const verification = await page.evaluate(() => {
+    const direction = BusDataSource.getDirectionsForRoute("鶴町一丁目-3a81dc__71号")[0];
+    const internal = BusDataSource._timetableByDirectionId.get(direction.id);
+    return internal ? [...internal.verifiedCalendars] : [];
+  });
+  expect(verification.sort()).toEqual(["holiday", "saturday", "weekday"]);
+  expectNoBrowserErrors(errors);
+});
