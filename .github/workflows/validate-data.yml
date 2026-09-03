@@ -8,6 +8,8 @@ on:
       - "index.html"
       - "sw.js"
       - "scripts/validate-data.mjs"
+      - "scripts/report-corridor-coverage.mjs"
+      - "scripts/report-corridor-coverage.test.mjs"
       - "tests/**"
       - "package.json"
       - "package-lock.json"
@@ -20,6 +22,8 @@ on:
       - "index.html"
       - "sw.js"
       - "scripts/validate-data.mjs"
+      - "scripts/report-corridor-coverage.mjs"
+      - "scripts/report-corridor-coverage.test.mjs"
       - "tests/**"
       - "package.json"
       - "package-lock.json"
@@ -43,11 +47,15 @@ jobs:
       - name: Validate timetable data
         run: node scripts/validate-data.mjs
 
+      - name: Test corridor coverage audit
+        run: npm run test:coverage-audit
+
       - name: Check JavaScript syntax
         run: |
           node --check js/timetable-loader.js
           node --check js/data.js
           node --check js/app.js
+          node --check scripts/report-corridor-coverage.mjs
 
       - name: Install browser test dependencies
         run: |
