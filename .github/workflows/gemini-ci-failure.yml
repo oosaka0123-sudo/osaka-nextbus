@@ -10,7 +10,6 @@ on:
 permissions:
   actions: read
   contents: read
-  issues: write
 
 concurrency:
   group: gemini-ci-${{ github.event.workflow_run.head_sha }}
@@ -64,12 +63,17 @@ jobs:
             exit 1
           fi
 
-          MARKER="<!-- gemini-ci-analysis:${HEAD_SHA} -->"
-          if gh api --paginate \
-              "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" \
-              --jq '.[].body' | grep -Fq "$MARKER"; then
+          ARTIFACT_NAME="gemini-ci-analysis-pr-${PR_NUMBER}-${HEAD_SHA}"
+          EXISTING_COUNT="$(
+            gh api --method GET \
+              "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$ARTIFACT_NAME" \
+              --jq '.artifacts | length'
+          )"
+
+          if [ "$EXISTING_COUNT" -gt 0 ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "A Gemini CI analysis already exists for this commit SHA."
+            echo "artifact_name=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
+            echo "A validated Gemini artifact already exists for this PR/SHA."
             exit 0
           fi
 
@@ -77,7 +81,7 @@ jobs:
           echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
           echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
           echo "head_sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
-          echo "marker=$MARKER" >> "$GITHUB_OUTPUT"
+          echo "artifact_name=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Verify Gemini API secret
         if: steps.gate.outputs.skip != 'true'
@@ -244,25 +248,52 @@ jobs:
             exit 1
           fi
 
-      - name: Post validated analysis to PR
+      - name: Prepare validated analysis artifact
         if: steps.gate.outputs.skip != 'true'
         env:
-          GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ steps.gate.outputs.pr_number }}
-          MARKER: ${{ steps.gate.outputs.marker }}
-          RUN_ID: ${{ steps.gate.outputs.run_id }}
+          SOURCE_RUN_ID: ${{ steps.gate.outputs.run_id }}
           HEAD_SHA: ${{ steps.gate.outputs.head_sha }}
+          ARTIFACT_NAME: ${{ steps.gate.outputs.artifact_name }}
         run: |
           set -euo pipefail
-          {
-            echo "$MARKER"
-            echo
-            echo "Automated analysis of failed trusted CI run \`$RUN_ID\` for commit \`$HEAD_SHA\`."
-            echo
-            cat /tmp/gemini-ci-result.md
-          } > /tmp/gemini-ci-comment.md
+          mkdir -p /tmp/gemini-ci-artifact
+          cp /tmp/gemini-ci-result.md /tmp/gemini-ci-artifact/analysis.md
+          jq -n \
+            --arg artifact_name "$ARTIFACT_NAME" \
+            --arg pr_number "$PR_NUMBER" \
+            --arg source_run_id "$SOURCE_RUN_ID" \
+            --arg head_sha "$HEAD_SHA" \
+            --arg analyzer_run_id "$GITHUB_RUN_ID" \
+            '{
+              artifact_name: $artifact_name,
+              pr_number: $pr_number,
+              source_workflow_run_id: $source_run_id,
+              head_sha: $head_sha,
+              analyzer_workflow_run_id: $analyzer_run_id
+            }' > /tmp/gemini-ci-artifact/metadata.json
 
-          jq -Rs '{body: .}' /tmp/gemini-ci-comment.md \
-            | gh api --method POST \
-                "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" \
-                --input -
+      - name: Upload validated Gemini analysis artifact
+        if: steps.gate.outputs.skip != 'true'
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ steps.gate.outputs.artifact_name }}
+          path: /tmp/gemini-ci-artifact/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Summarize artifact handoff
+        if: steps.gate.outputs.skip != 'true'
+        env:
+          ARTIFACT_NAME: ${{ steps.gate.outputs.artifact_name }}
+          PR_NUMBER: ${{ steps.gate.outputs.pr_number }}
+          HEAD_SHA: ${{ steps.gate.outputs.head_sha }}
+        run: |
+          {
+            echo "## Gemini CI analysis artifact ready"
+            echo
+            echo "- Artifact: \`$ARTIFACT_NAME\`"
+            echo "- PR: \`#$PR_NUMBER\`"
+            echo "- Head SHA: \`$HEAD_SHA\`"
+            echo "- Result: validated and secret-pattern checked"
+          } >> "$GITHUB_STEP_SUMMARY"
