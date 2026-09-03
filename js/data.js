@@ -132,7 +132,7 @@ const TokyoTime = {
 /**
  * 日本の祝日判定(内閣府「国民の祝日に関する法律」に基づく計算)。
  * 春分の日・秋分の日は2000〜2099年で有効な標準的な近似式を使用。
- * 振替休日(祝日が日曜の場合、直後の祝日でない日を休日とする)と
+ * 振替休日(祝日が日曜の場合、直後の祝日でない日を休日にする)と
  * 国民の休日(祝日と祝日に挟まれた平日を休日とする)にも対応する。
  */
 const JapaneseCalendar = (() => {
@@ -163,7 +163,7 @@ const JapaneseCalendar = (() => {
     push(2, 11); // 建国記念の日
     if (year >= 2020) push(2, 23); // 天皇誕生日
     push(4, 29); // 昭和の日
-    push(5, 3); // 憲法記念日
+    push(5, 3); // 憲法記念の日
     push(5, 4); // みどりの日
     push(5, 5); // こどもの日
     push(8, 11); // 山の日
@@ -306,7 +306,7 @@ const DEMO_ROUTES = [
   { id: "osakaeki-1", stopId: "osakaeki", label: "3号", destination: "3号" },
   { id: "namba-1", stopId: "namba", label: "4号", destination: "4号" },
   { id: "abenobashi-1", stopId: "abenobashi", label: "5号", destination: "5号" },
-  { id: "shinsaibashi", stopId: "shinsaibashi", label: "6号", destination: "6号" },
+  { id: "shinsaibashi-1", stopId: "shinsaibashi", label: "6号", destination: "6号" },
 ];
 
 const DEMO_DIRECTION_DEFS = [
