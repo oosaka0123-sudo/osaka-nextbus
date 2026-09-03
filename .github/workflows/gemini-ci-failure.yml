@@ -151,6 +151,19 @@ jobs:
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
           upload_artifacts: "false"
+          settings: |-
+            {
+              "model": {
+                "maxSessionTurns": 8
+              },
+              "tools": {
+                "core": [
+                  "list_directory",
+                  "read_file",
+                  "grep_search"
+                ]
+              }
+            }
           prompt: |-
             You are the CI Failure Analyzer in the osaka-nextbus multi-agent development system.
 
@@ -170,6 +183,7 @@ jobs:
             - Do not request, reveal, infer, reproduce, or print secrets, tokens, credentials, cookies, environment values, or API keys.
             - Do not invent error messages, code state, or fixes that are not supported by evidence.
             - You may inspect trusted files from the checked-out default branch only to understand normal project structure.
+            - Your available Gemini tools are intentionally limited to read-only local file/list/search tools. Do not attempt to bypass that restriction.
 
             Your task is to explain the likely cause of the CI failure and propose the smallest next debugging/fix action.
             A proposal is not an implemented fix.
