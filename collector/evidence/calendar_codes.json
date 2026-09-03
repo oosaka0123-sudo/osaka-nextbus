@@ -14,6 +14,13 @@
       "sourceUrl": "https://oc.bus-vision.jp/osakacitybus/view/diagramDetail.html?corpCd=1&dateDivCd=13&diaCd=17274&lang=0&lineCd=71&opeYmd=20250607&revYmd=20250601&routeCd=7100&timetableDateDivCd=-1&updownCd=1",
       "observedAt": "2026-09-03",
       "evidenceNote": "公開検索由来のSATURDAY_URLとしてcollector/tests/test_bus_vision_trip_detail.pyのtest_observed_saturday_url_keeps_raw_date_div_codeに回帰固定済み。"
+    },
+    {
+      "calendar": "holiday",
+      "dateDivCd": "12",
+      "sourceUrl": "https://oc.bus-vision.jp/osakacitybus/view/diagramDetail.html?corpCd=1&dateDivCd=12&diaCd=9992&lang=0&lineCd=80&opeYmd=20260308&revYmd=20260301&routeCd=8000&timetableDateDivCd=-1&updownCd=1",
+      "observedAt": "2026-09-03",
+      "evidenceNote": "Issue #68で公式Bus-Visionの2026-03-08(日) 80号あべの橋行き便詳細を確認。プロジェクトは日曜・祝日をholiday bucketとして扱うためdateDivCd=12をholidayへVerified登録。"
     }
   ]
 }
