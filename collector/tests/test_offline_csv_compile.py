@@ -27,7 +27,7 @@ DETAIL_11 = (
     "timetableDateDivCd=-1&updownCd=1"
 )
 DETAIL_13 = DETAIL_11.replace("dateDivCd=11", "dateDivCd=13").replace("diaCd=5047", "diaCd=synthetic-sat")
-DETAIL_12 = DETAIL_11.replace("dateDivCd=11", "dateDivCd=12").replace("diaCd=5047", "diaCd=unverified-holiday")
+DETAIL_12 = DETAIL_11.replace("dateDivCd=11", "dateDivCd=12").replace("diaCd=5047", "diaCd=synthetic-holiday")
 
 DETAIL_HTML = """
 <html><body>
@@ -124,18 +124,18 @@ class OfflineCsvCompileTest(unittest.TestCase):
         self.assertEqual(rows[0]["time"], "07:35")
         self.assertEqual(rows[0]["destination"], "なんば行き")
 
-    def test_saturday_13_compiles_from_verified_partial_calendar_registry(self):
+    def test_saturday_13_compiles_from_verified_calendar_registry(self):
         count, rows, _ = self._compile(DETAIL_13, "saturday.csv")
         self.assertEqual(count, 1)
         self.assertEqual(rows[0]["calendar"], "saturday")
 
-    def test_unverified_12_fails_closed_and_creates_no_csv(self):
-        manifest = self._manifest_for(DETAIL_12)
-        records = run_dry_run(manifest, registry_path=self.registry)
-        output = self.root / "holiday.csv"
-        with self.assertRaises(DryRunError):
-            compile_records_to_csv(records, output)
-        self.assertFalse(output.exists())
+    def test_verified_12_compiles_as_holiday(self):
+        count, rows, output = self._compile(DETAIL_12, "holiday.csv")
+        self.assertEqual(count, 1)
+        self.assertTrue(output.exists())
+        self.assertEqual(rows[0]["calendar"], "holiday")
+        self.assertEqual(rows[0]["routeId"], "鶴町三丁目-315527__87号")
+        self.assertEqual(rows[0]["time"], "07:35")
 
     def test_numeric_busvision_line_resolves_only_to_existing_number_suffix_route(self):
         _, rows, _ = self._compile(DETAIL_11, "route-format.csv")
