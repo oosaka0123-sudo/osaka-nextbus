@@ -136,8 +136,6 @@ jobs:
           if not text.strip():
               text = '[No non-sensitive failed log lines remained after sanitization.]'
 
-          # Runtime-only workspace file. Do not place this under .gemini/ because
-          # that directory is intentionally ignored and Gemini CLI refuses to read it.
           Path('ci-failure-input.txt').write_text(text, encoding='utf-8')
           PY
 
@@ -264,6 +262,7 @@ jobs:
             cat /tmp/gemini-ci-result.md
           } > /tmp/gemini-ci-comment.md
 
-          gh pr comment "$PR_NUMBER" \
-            --repo "$GITHUB_REPOSITORY" \
-            --body-file /tmp/gemini-ci-comment.md
+          jq -Rs '{body: .}' /tmp/gemini-ci-comment.md \
+            | gh api --method POST \
+                "repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" \
+                --input -
