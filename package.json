@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "validate": "node scripts/validate-data.mjs",
+    "test:partial-calendar-validator": "node --test scripts/validate-partial-calendar.test.mjs",
     "test:coverage-audit": "node --test scripts/report-corridor-coverage.test.mjs",
     "test:smoke": "playwright test"
   },
