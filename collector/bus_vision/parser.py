@@ -1,26 +1,24 @@
 """
 collector/bus_vision/parser.py
 ---------------------------------------------------------
-diagramDetail.html(時刻表詳細ページ)のHTML文字列を解析し、
-DepartureRecord のリストに変換する。
+保存済みHTML文字列を DepartureRecord に変換する、ネットワーク非依存の
+純粋な解析処理。
 
-collector のネットワーク層(http_client.py / checkpoint.py / config.py)
-には一切依存しない。入力はHTML文字列と SelectorConfig のみで、
-ネットワークアクセスは一切発生しない、オフラインで完結する
-純粋な変換処理。
+`parse_diagram_detail()` は初期プロトタイプ互換の旧・停留所中心Parser。
+公開検索で確認できた実際の Bus-Vision `diagramDetail.html` は
+「1便の系統/行先 + 複数停留所の時刻」という意味を持つため、新規実装は
+`parse_trip_detail()` を使う。
 
-安全要件「HTML解析失敗時は停止」に対応するため、SelectorConfig で
-指定した要素が見つからない場合、行ごとに必要な情報(系統番号・行先・
-時刻のいずれか)が欠けている場合、または時刻として解釈できない文字列の
-場合は、値を推測して埋めたり黙ってスキップしたりせず、ParseError を
-送出してその場で処理を止める。
+Production DOM selector は未確認なので、このモジュールは実サイト向けの
+selectorを決め打ちしない。必要要素が見つからない場合や情報が不足する場合は
+推測・部分成功をせず ParseError で停止する。
 """
 import re
 from typing import List, Optional
 
 from ..models import DepartureRecord
 from .html_dom import Element, parse_html
-from .selectors import ElementSpec, SelectorConfig
+from .selectors import ElementSpec, SelectorConfig, TripDetailSelectorConfig
 
 _TIME_RE = re.compile(r"\d{1,2}:\d{2}")
 
@@ -44,6 +42,137 @@ def _find_text(root: Element, spec: Optional[ElementSpec], *, required: bool, wh
     return text
 
 
+def _resolve_page_value(
+    root: Element,
+    spec: Optional[ElementSpec],
+    hint: Optional[str],
+    *,
+    what: str,
+) -> str:
+    """HTML selectorを指定した場合はHTML値を必須とし、未指定時だけhintを使う。
+
+    selectorを設定したのに要素が消えた場合、hintで黙って救済するとDOM変更を
+    見逃すためフォールバックしない。
+    """
+    if spec is not None:
+        value = _find_text(root, spec, required=True, what=what)
+        assert value is not None
+        return value
+    if hint:
+        return hint
+    raise ParseError(f"{what}を決定できません。selector または明示的なhintが必要です")
+
+
+def _extract_time(text: str, *, what: str) -> str:
+    match = _TIME_RE.search(text)
+    if not match:
+        raise ParseError(f"{what}から時刻を抽出できません(内容: {text!r})。推測で補完せず停止します")
+    return match.group(0)
+
+
+def parse_trip_detail(
+    html: str,
+    *,
+    selector_config: TripDetailSelectorConfig,
+    source_url: str,
+    fetched_at: str,
+    calendar_hint: Optional[str] = None,
+    line_no_hint: Optional[str] = None,
+    destination_hint: Optional[str] = None,
+    direction_hint: Optional[str] = None,
+) -> List[DepartureRecord]:
+    """1便詳細ページを解析し、その便が通る各停留所のRecordを返す。
+
+    公開検索で確認できた `diagramDetail.html` は、1つの系統/行先について
+    `停留所 + 時刻` が順番に並ぶ便詳細ページである。この関数はその意味を
+    モデル化する。
+
+    Production DOMは未確認のため、line_no / destination / calendar をHTMLから
+    取るselectorを指定しない場合は、呼び出し側が *_hint を明示する必要がある。
+    URLや本文から未知の値を推測する処理は行わない。
+
+    stop row が0件、必須要素が欠落、時刻が解釈不能、生成Recordが不正の
+    いずれか1件でも発生した場合は、部分結果を返さず ParseError で停止する。
+    """
+    root = parse_html(html)
+
+    line_no = _resolve_page_value(
+        root,
+        selector_config.line_no,
+        line_no_hint,
+        what="系統番号",
+    )
+    destination = _resolve_page_value(
+        root,
+        selector_config.destination,
+        destination_hint,
+        what="行先",
+    )
+
+    if selector_config.calendar_label is not None:
+        calendar_label = _find_text(
+            root,
+            selector_config.calendar_label,
+            required=True,
+            what="曜日区分ラベル",
+        )
+        assert calendar_label is not None
+        service = calendar_label
+    else:
+        service = calendar_hint
+    if not service:
+        raise ParseError(
+            "曜日区分(service)を決定できません。calendar_hint を指定するか、"
+            "selector_config.calendar_label を設定してください。"
+        )
+
+    row_tag, row_class = selector_config.stop_row
+    rows = root.find_all(tag=row_tag, class_=row_class)
+    if not rows:
+        raise ParseError(
+            f"停留所時刻行が1件も見つかりません(tag={row_tag!r}, class_={row_class!r})。"
+            "HTML構造が想定と異なる可能性があります"
+        )
+
+    direction = direction_hint or destination
+    records: List[DepartureRecord] = []
+
+    for i, row in enumerate(rows):
+        loc = f"{i + 1}件目の停留所時刻行"
+        stop_name = _find_text(
+            row,
+            selector_config.stop_name,
+            required=True,
+            what=f"{loc}の停留所名",
+        )
+        time_text = _find_text(
+            row,
+            selector_config.time_cell,
+            required=True,
+            what=f"{loc}の時刻",
+        )
+        assert stop_name is not None
+        assert time_text is not None
+        departure_time = _extract_time(time_text, what=f"{loc}の時刻要素")
+
+        record = DepartureRecord(
+            stop_name=stop_name,
+            departure_time=departure_time,
+            line_no=line_no,
+            headsign=destination,
+            direction=direction,
+            service=service,
+            source_url=source_url,
+            fetched_at=fetched_at,
+        )
+        errors = record.validate()
+        if errors:
+            raise ParseError(f"{loc}のレコードが不正です: {', '.join(errors)}")
+        records.append(record)
+
+    return records
+
+
 def parse_diagram_detail(
     html: str,
     *,
@@ -53,20 +182,11 @@ def parse_diagram_detail(
     calendar_hint: Optional[str] = None,
     direction_hint: Optional[str] = None,
 ) -> List[DepartureRecord]:
-    """diagramDetail.html の内容を解析し、DepartureRecordのリストを返す。
+    """旧・停留所中心の合成fixture互換Parser。
 
-    calendar_hint: このページが表す曜日区分を表す文字列(例: dateDivCdの値、
-      または "weekday"等)。dateDivCdの意味付けが未確認のため、既定では
-      HTMLから自動判定せず、呼び出し側(どのdateDivCd値でこのページを
-      取得したか把握している側)が明示的に渡す運用とする。
-      selector_config.calendar_label が指定されている場合は、そちらで
-      取得したHTML内の表示ラベルを優先する。
-    direction_hint: 方面名。HTML側に方面固有の見出しが無い場合に使う
-      フォールバック値。省略時は行先(destination)をそのまま方面としても使う。
-
-    見つかった系統ブロックが0件、時刻セルが0件、または時刻として解釈
-    できないセルが1件でもあれば、その場で ParseError を送出して停止する
-    (部分的な結果を返さない)。
+    注意: この関数のDOMモデルを実Bus-Vision `diagramDetail.html` のproduction
+    構造として扱わないこと。既存テスト/移行互換のため残している。
+    新規の便詳細処理は `parse_trip_detail()` を使用する。
     """
     root = parse_html(html)
 
@@ -106,15 +226,13 @@ def parse_diagram_detail(
 
         for j, cell in enumerate(time_cells):
             text = cell.get_text(strip=True)
-            m = _TIME_RE.search(text)
-            if not m:
-                raise ParseError(
-                    f"{loc}(系統{line_no})の{j + 1}件目の時刻セルから時刻を抽出できません"
-                    f"(セルの内容: {text!r})。推測で補完せず停止します。"
-                )
+            departure_time = _extract_time(
+                text,
+                what=f"{loc}(系統{line_no})の{j + 1}件目の時刻セル",
+            )
             record = DepartureRecord(
                 stop_name=stop_name,
-                departure_time=m.group(0),
+                departure_time=departure_time,
                 line_no=line_no,
                 headsign=destination,
                 direction=direction,
