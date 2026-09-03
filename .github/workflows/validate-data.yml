@@ -50,6 +50,9 @@ jobs:
       - name: Test corridor coverage audit
         run: npm run test:coverage-audit
 
+      - name: Report production corridor coverage
+        run: node scripts/report-corridor-coverage.mjs
+
       - name: Check JavaScript syntax
         run: |
           node --check js/timetable-loader.js
