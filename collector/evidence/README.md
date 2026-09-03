@@ -51,6 +51,30 @@ strLineList=71-1-1_87-1-1
 
 Registry登録はネットワーク収集許可を意味しません。`collector/config.py` の `PERMISSION_GRANTED = False` は別のrisk:high承認まで維持します。
 
+## Safe manifest scaffold
+
+Verified Stop Registryから、実データを一切創作しない未完成manifest templateを生成できます。
+
+```bash
+python3 -m collector.scaffold_manifest \
+  --url 'VERIFIED_DIAGRAM_URL' \
+  --output /tmp/manifest.json
+```
+
+停留所名がRegistry内で一意なら `--stop-name` でも選択できます。同名の方向・のりばが複数登録されている場合は曖昧さを避けるため停止し、`--url`指定を要求します。
+
+生成物は必ず `templateState: incomplete` です。以下は自動生成しません。
+
+- 発車時刻
+- dummy HTML
+- `diagramDetail.html` の推測URL
+- production DOM selector
+- `fetchedAt` / `directionHint` の推測値
+
+実際に保存・確認したEvidenceで `REQUIRED_*` を埋めた後、最後に `templateState` を `ready` へ変更します。`offline_dry_run` は `templateState` が存在して `ready` 以外なら、HTMLファイルを読む前にfail closedします。旧manifestの互換性維持のため、`templateState`自体が存在しない既存manifestは従来どおり検証されます。
+
+既存の出力manifestはデフォルトで上書きしません。
+
 ## Offline dry-run
 
 Registryの登録対象だけを確認する:
