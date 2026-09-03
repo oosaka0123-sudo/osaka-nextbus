@@ -11,6 +11,17 @@
       "lang": "0",
       "observedAt": "2026-09-03",
       "evidenceNote": "公開Bus-Vision時刻表で確認。Issue #37 / PR #38で87号なんば行き07:35便との時刻一致を回帰確認済み。"
+    },
+    {
+      "stopName": "なんば",
+      "directionNote": "【西】②のりば 大正区役所前経由鶴町四丁目・新千歳経由鶴町四丁目方面",
+      "sourceUrl": "https://oc.bus-vision.jp/osakacitybus/view/diagram.html?lang=0&poleCd=91&stopCd=360&strLineList=null",
+      "stopCd": "360",
+      "poleCd": "91",
+      "strLineList": "null",
+      "lang": "0",
+      "observedAt": "2026-09-03",
+      "evidenceNote": "公式Bus-Vision公開画面・公開検索結果で、なんば【西】②のりばとURLを確認。Issue #57にVERIFIED evidenceとしてstopCd=360 / poleCd=91 / literal strLineList=nullを記録済み。"
     }
   ]
 }

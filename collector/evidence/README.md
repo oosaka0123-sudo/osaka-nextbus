@@ -13,7 +13,9 @@
 - `sourceUrl` は `https://oc.bus-vision.jp/osakacitybus/view/diagram.html` に限定する。
 - `evidence_registry.py` が宣言値とURL queryを照合し、不一致・欠損・重複をfail closedする。
 
-2026-09-03時点の初期登録は **鶴町三丁目・市内向き** 1件です。
+2026-09-03時点の登録は **2件** です。
+
+### 鶴町三丁目・市内向き
 
 ```text
 stopCd=811
@@ -22,6 +24,22 @@ strLineList=71-1-1_87-1-1
 ```
 
 公開停留所時刻表の07:35と、87号なんば行き便詳細の鶴町三丁目07:35が一致することを Issue #37 / PR #38 で回帰確認しています。
+
+### なんば・【西】②のりば・鶴町四丁目方面
+
+```text
+stopCd=360
+poleCd=91
+strLineList=null
+```
+
+公式Bus-Vision公開画面・公開検索結果で、なんば【西】②のりば「大正区役所前経由鶴町四 / 新千歳経由鶴町四行」と次のURLを確認し、Issue #57へVERIFIED Evidenceとして記録しています。
+
+```text
+https://oc.bus-vision.jp/osakacitybus/view/diagram.html?lang=0&poleCd=91&stopCd=360&strLineList=null
+```
+
+この `strLineList=null` は欠落値をAIが補ったものではありません。**公式公開URLに文字列 `null` として実在した値をそのまま保存**します。URL parserとRegistry validatorも文字列 `"null"` として完全一致を検証します。
 
 鶴町一丁目の `stopCd` は Issue #39 が解決するまで未確認です。隣接番号から考えられる値があってもRegistryへ登録してはいけません。
 
