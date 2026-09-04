@@ -149,16 +149,57 @@ export function buildCoverageReport({ stops, routes, base, extra }, stopNames = 
     ]),
   );
 
+  const candidateMap = new Map();
+
+  for (const stopReport of reportStops) {
+    for (const routeReport of stopReport.routes) {
+      const label = routeReport.label;
+      if (!label) continue;
+      if (!candidateMap.has(label)) {
+        candidateMap.set(label, []);
+      }
+      candidateMap.get(label).push({
+        stopName: stopReport.stopName,
+        routeId: routeReport.routeId,
+      });
+    }
+  }
+
+  const CANDIDATE_DISCLAIMER =
+    "同じ系統ラベルが複数停留所に存在しても、それだけでその便が対象区間を通過することや同一方向で利用可能であることを示すものではありません。本出力は決定論的な存在棚卸し（inventory）に限定されています。";
+
+  const routeCandidates = [...candidateMap.entries()]
+    .sort(([labelA], [labelB]) => labelA.localeCompare(labelB, "ja", { numeric: true }))
+    .map(([label, stopEntries]) => {
+      const stopNames = stopEntries.map((e) => e.stopName);
+      const stopRouteIds = Object.fromEntries(stopEntries.map((e) => [e.stopName, e.routeId]));
+      return {
+        label,
+        stopCount: stopEntries.length,
+        isShared: stopEntries.length >= 2,
+        stopNames,
+        stopRouteIds,
+        routes: stopEntries,
+      };
+    });
+
+  const sharedRouteCandidates = routeCandidates.filter((c) => c.isShared);
+
   return {
     generatedFrom: [FILES.stops, FILES.routes, FILES.base, FILES.extra],
+    candidateNotice: CANDIDATE_DISCLAIMER,
     stopCount: reportStops.length,
     totals: {
       routeAssociations: reportStops.reduce((sum, stop) => sum + stop.routeAssociationCount, 0),
       coveredRoutes: reportStops.reduce((sum, stop) => sum + stop.coveredRouteCount, 0),
       missingRoutes: reportStops.reduce((sum, stop) => sum + stop.missingRouteCount, 0),
+      routeCandidates: routeCandidates.length,
+      sharedRouteCandidates: sharedRouteCandidates.length,
       mergedTimetableEntries: mergedTimetables.length,
       calendars: totalCalendarSummary,
     },
+    routeCandidates,
+    sharedRouteCandidates,
     stops: reportStops,
   };
 }
@@ -189,7 +230,32 @@ function formatHuman(report) {
     `missing: ${report.totals.missingRoutes}`,
     `calendar verified (verified/routes): ${formatCalendarCounts(report.totals.calendars)}`,
     "",
+    "【横断系統ラベル Candidate Inventory】",
+    `※ ${report.candidateNotice}`,
+    `候補系統数: ${report.totals.routeCandidates} (shared: ${report.totals.sharedRouteCandidates})`,
   ];
+
+  if (report.sharedRouteCandidates.length > 0) {
+    lines.push("  [Shared Candidates (2停留所以上)]");
+    for (const c of report.sharedRouteCandidates) {
+      lines.push(`  - ${c.label} (${c.stopCount}停留所: ${c.stopNames.join(", ")})`);
+      for (const r of c.routes) {
+        lines.push(`      ${r.stopName}: ${r.routeId}`);
+      }
+    }
+  } else {
+    lines.push("  [Shared Candidates] なし");
+  }
+
+  const singleCandidates = report.routeCandidates.filter((c) => !c.isShared);
+  if (singleCandidates.length > 0) {
+    lines.push("  [Single Stop Candidates (1停留所のみ)]");
+    for (const c of singleCandidates) {
+      lines.push(`  - ${c.label} (${c.stopNames.join(", ")}) [${c.routes[0].routeId}]`);
+    }
+  }
+
+  lines.push("");
 
   for (const stop of report.stops) {
     lines.push(`[${stop.stopName}] ${stop.stopId}`);

@@ -159,6 +159,49 @@ test("stop and corridor totals summarize verified/missing counts per calendar", 
   });
 });
 
+test("identifies shared route candidates across stops and preserves distinct routeIds per stop", () => {
+  const data = fixture();
+  data.routes.push({ id: "stop-b__1号", stopId: "stop-b", label: "1号" });
+
+  const report = buildCoverageReport(data, ["停留所A", "停留所B"]);
+
+  const shared1 = report.sharedRouteCandidates.find((c) => c.label === "1号");
+  assert.ok(shared1, "1号 should be in sharedRouteCandidates");
+  assert.equal(shared1.isShared, true);
+  assert.equal(shared1.stopCount, 2);
+  assert.deepEqual(shared1.stopNames, ["停留所A", "停留所B"]);
+  assert.deepEqual(shared1.stopRouteIds, {
+    停留所A: "stop-a__1号",
+    停留所B: "stop-b__1号",
+  });
+  assert.deepEqual(shared1.routes, [
+    { stopName: "停留所A", routeId: "stop-a__1号" },
+    { stopName: "停留所B", routeId: "stop-b__1号" },
+  ]);
+
+  const candidate2 = report.routeCandidates.find((c) => c.label === "2号");
+  assert.ok(candidate2, "2号 should be in routeCandidates");
+  assert.equal(candidate2.isShared, false);
+  assert.equal(candidate2.stopCount, 1);
+  assert.deepEqual(candidate2.stopNames, ["停留所A"]);
+  assert.deepEqual(candidate2.stopRouteIds, {
+    停留所A: "stop-a__2号",
+  });
+
+  const candidate3 = report.routeCandidates.find((c) => c.label === "3号");
+  assert.ok(candidate3, "3号 should be in routeCandidates");
+  assert.equal(candidate3.isShared, false);
+  assert.equal(candidate3.stopCount, 1);
+  assert.deepEqual(candidate3.stopNames, ["停留所B"]);
+  assert.deepEqual(candidate3.stopRouteIds, {
+    停留所B: "stop-b__3号",
+  });
+
+  assert.equal(report.sharedRouteCandidates.length, 1);
+  assert.equal(report.routeCandidates.length, 3);
+  assert.ok(report.candidateNotice.includes("決定論的な存在棚卸し"));
+});
+
 test("Namba 71/87 production data reports weekday verified, saturday/holiday missing", async () => {
   const { readFile } = await import("node:fs/promises");
   const { resolve } = await import("node:path");
