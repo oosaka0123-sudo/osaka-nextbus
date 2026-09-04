@@ -1,0 +1,24 @@
+name: Issue Status Cleanup
+
+on:
+  issues:
+    types:
+      - closed
+
+permissions:
+  issues: write
+
+jobs:
+  cleanup-doing-status:
+    if: contains(github.event.issue.labels.*.name, 'status:doing')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Remove status:doing label
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh issue edit "$ISSUE_NUMBER" --repo "$REPO" --remove-label "status:doing"
