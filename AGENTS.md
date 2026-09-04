@@ -317,3 +317,19 @@ GitHub Actions `Validate bus data` / `Test collector` の該当ゲートがPASS�
 
 AI開発OS v1そのものを最初に導入する1回だけ、Issueプロトコル導入前のためブートストラップ用ブランチで3コア文書を追加する例外を認める。
 この初回PRがマージされた後は、原則として全作業をIssue起点にする。
+
+## 16. Chat persistence / knowledge routing
+
+ユーザーから「このチャット内容をリポジトリに保存して」または同等の保存指示を受けた場合は、生の会話ログをそのまま保存せず、確定した重要情報だけをGitHub上の適切な正本へ整理して反映する。
+
+- 保存前に、対象Repositoryの現在のdefault branch、`AGENTS.md`、`README.md`、必要な `DECISIONS.md` / `RUNBOOK.md`、関連Issue / PR / Actionsを再確認する
+- 確定した現行仕様・収録範囲・PWA挙動・データ構成などの「現在状態」は、既存の `README.md` や該当する仕様ファイルを更新する
+- 長期的に重要な設計判断や変えてはいけない理由は、必要な場合のみ `DECISIONS.md` を更新する
+- 再利用する実行・検証・復旧手順は、必要な場合のみ `RUNBOOK.md` を更新する
+- 未完了作業・次回復帰に必要な一時状態は、Project既定の引き継ぎファイルがあればそれを優先し、なければ必要時のみ `HANDOFF.md` を作成・更新する
+- Issue / PR / Actions / Commitで復元できるタスク履歴、差分、テスト結果はMarkdownへ重複保存しない
+- `DECISIONS.md` / `RUNBOOK.md` / `HANDOFF.md` を形式だけで先回り作成しない
+- 現在状態の文書はappend-onlyにせず、古い数値・仕様・状態が現行情報として残らないように既存記述を更新・整理する
+- 未確認の停留所、時刻、URL、selector、collector状態などをチャットから推測して保存しない。OBSERVED / HYPOTHESIS分離を維持する
+- APIキー、パスワード、Token、Secret、Webhook URL、認証情報、非公開の機密値は保存対象から除外し、Issue / PR / Markdownにも転記しない
+- 保存後は、更新した正本と、Issue/PR等で復元可能なため保存しなかった情報を簡潔に報告する
