@@ -129,6 +129,6 @@
   - `.github/workflows/copilot-review-request.yml` を新設し、PRが `opened`, `reopened`, `ready_for_review`, `synchronize` になった際にCopilot Code Reviewを自動要求する。
   - Draft PRは `ready_for_review` になるまで要求を抑止する。
   - レビュー要求前に `GET /repos/{owner}/{repo}/pulls/{number}/requested_reviewers` を確認し、すでに `copilot-pull-request-reviewer[bot]` が requested_reviewers に存在する場合は重複リクエストを行わない。
-  - 権限は最小限（`contents: read`, `pull-requests: write`）とし、`contents: write` や外部Secretは使用しない。
+  - 権限は最小限（`pull-requests: write`）とし、`contents: write` や外部Secretは使用しない。
   - レビュー指摘時の自動マージ（Auto-merge）は行わない。
 - **Consequence**: 同一リポジトリ内の通常PRが作成・更新された際、手動操作なしで独立したCopilot PRレビューが自動開始される。
