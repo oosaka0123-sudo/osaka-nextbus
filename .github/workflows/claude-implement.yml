@@ -9,6 +9,7 @@ permissions:
   contents: write
   issues: write
   pull-requests: write
+  id-token: write
 
 concurrency:
   group: claude-implement-issue-${{ github.event.issue.number }}
@@ -27,12 +28,15 @@ jobs:
     timeout-minutes: 30
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Run Claude Code Action
         uses: anthropics/claude-code-action@ef8bb1e43bf303cff727a1dd0b8837029fe982a2
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           label_trigger: 'status:doing'
-          custom_instructions: |-
+          prompt: |-
             You are Claude Code, an implementer agent in the osaka-nextbus multi-agent development system.
 
             Before implementing any solution, read the following files in this repository:
