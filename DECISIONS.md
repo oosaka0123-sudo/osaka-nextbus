@@ -120,3 +120,15 @@
   - 停留所ページと便詳細の時刻不一致、detail HTML欠落、target stop 0件/複数件はfail closedする。
   - `PERMISSION_GRANTED = False`を維持し、実ネットワーク収集を有効化しない。
 - **Consequence**: 実ID/実HTMLを後から差し込める一方、未確認selectorやIDを推測して本番データへ混入させない。2026-09-03時点でcollector unit tests 76件PASS。
+
+## ADR-011: Copilot Code Review Request Automation
+
+- **Status**: Accepted
+- **Context**: PRごとにPMが手動でCopilot reviewerを要求する操作があり、依頼漏れや非効率が生じていた。PR #91にてGitHub REST API経由の `copilot-pull-request-reviewer[bot]` 指定でCopilotレビュー自動開始が実証された。
+- **Decision**:
+  - `.github/workflows/copilot-review-request.yml` を新設し、PRが `opened`, `reopened`, `ready_for_review`, `synchronize` になった際にCopilot Code Reviewを自動要求する。
+  - Draft PRは `ready_for_review` になるまで要求を抑止する。
+  - レビュー要求前に `GET /repos/{owner}/{repo}/pulls/{number}/requested_reviewers` を確認し、すでに `copilot-pull-request-reviewer[bot]` が requested_reviewers に存在する場合は重複リクエストを行わない。
+  - 権限は最小限（`contents: read`, `pull-requests: write`）とし、`contents: write` や外部Secretは使用しない。
+  - レビュー指摘時の自動マージ（Auto-merge）は行わない。
+- **Consequence**: 同一リポジトリ内の通常PRが作成・更新された際、手動操作なしで独立したCopilot PRレビューが自動開始される。
