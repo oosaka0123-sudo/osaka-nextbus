@@ -15,10 +15,7 @@ on:
       - "package.json"
       - "package-lock.json"
       - "playwright.config.js"
-      - ".github/workflows/validate-data.yml"
-      - ".github/workflows/claude-implement.yml"
-      - ".github/workflows/copilot-review-request.yml"
-      - ".github/workflows/gemini-analyze.yml"
+      - ".github/workflows/**"
   pull_request:
     paths:
       - "data/**"
@@ -33,10 +30,7 @@ on:
       - "package.json"
       - "package-lock.json"
       - "playwright.config.js"
-      - ".github/workflows/validate-data.yml"
-      - ".github/workflows/claude-implement.yml"
-      - ".github/workflows/copilot-review-request.yml"
-      - ".github/workflows/gemini-analyze.yml"
+      - ".github/workflows/**"
   workflow_dispatch:
 
 jobs:
