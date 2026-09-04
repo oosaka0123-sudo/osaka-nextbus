@@ -1,0 +1,54 @@
+name: Claude Code Implementation
+
+on:
+  issues:
+    types:
+      - labeled
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  id-token: write
+
+concurrency:
+  group: claude-implement-issue-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  claude-implement:
+    if: >-
+      ${{
+        github.event_name == 'issues' &&
+        github.event.action == 'labeled' &&
+        github.event.label.name == 'status:doing' &&
+        contains(github.event.issue.labels.*.name, 'agent:claude')
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Claude Code Action
+        uses: anthropics/claude-code-action@ef8bb1e43bf303cff727a1dd0b8837029fe982a2
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          label_trigger: 'status:doing'
+          prompt: |-
+            You are Claude Code, an implementer agent in the osaka-nextbus multi-agent development system.
+
+            Before implementing any solution, read the following files in this repository:
+            1. The target Issue body and comments
+            2. AGENTS.md
+            3. DECISIONS.md
+            4. RUNBOOK.md
+
+            Repository governance and single source of truth rules:
+            - GitHub Issues are the Single Source of Truth for tasks.
+            - 1 Issue = 1 Branch. Never commit directly to default branches.
+            - Create a Pull Request (PR) for all changes.
+            - Execute required verifications (e.g. `npm run validate`, `python3 -m unittest discover -s collector/tests -t .`, smoke tests) before submitting or updating PRs.
+            - Strictly follow the 3-strike rule: if a fix fails tests 3 times, do not loop infinitely; mark status as BLOCKED on the issue with a summary.
+            - Keep PERMISSION_GRANTED=False in collector/config.py.
