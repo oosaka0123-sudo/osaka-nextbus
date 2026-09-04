@@ -16,11 +16,11 @@
 
 時刻表は2ファイル構成。
 
-- `data/timetable.json` — 基本8エントリ
-- `data/timetable-extra.json` — 追加4エントリ + 上書き補正1エントリ
+- `data/timetable.json` — 基本エントリ
+- `data/timetable-extra.json` — 追加エントリ + 上書き補正エントリ
 - `js/timetable-loader.js` — 両者を結合（extra失敗時はbaseのみ、同一キーはextra優先）
 
-rawでは13エントリ、結合後は合計12系統×方面（2026-08-31時点）。extraの同一キーは写真再照合などの意図した補正として利用できるが、理由をmetadataへ必ず記録する。
+結合後の具体件数はデータ追加・補正により変動するため、最新件数は `node scripts/validate-data.mjs` の検証結果、`README.md` および `data/metadata.json` を正とします。extraの同一キーは写真再照合などの意図した補正として利用できるが、理由をmetadataへ必ず記録する。
 
 ## commit/push前の必須確認
 
