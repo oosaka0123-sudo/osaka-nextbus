@@ -18,6 +18,7 @@ on:
       - ".github/workflows/validate-data.yml"
       - ".github/workflows/claude-implement.yml"
       - ".github/workflows/copilot-review-request.yml"
+      - ".github/workflows/gemini-analyze.yml"
   pull_request:
     paths:
       - "data/**"
@@ -35,6 +36,7 @@ on:
       - ".github/workflows/validate-data.yml"
       - ".github/workflows/claude-implement.yml"
       - ".github/workflows/copilot-review-request.yml"
+      - ".github/workflows/gemini-analyze.yml"
   workflow_dispatch:
 
 jobs:
