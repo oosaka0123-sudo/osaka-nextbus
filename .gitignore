@@ -4,6 +4,7 @@ collector/data/
 
 # npm dependency tree (restored via `npm ci` from committed package-lock.json)
 node_modules/
+test-results/
 
 # Gemini CLI project-local settings (never commit local generated state)
 .gemini/
