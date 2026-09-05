@@ -167,7 +167,7 @@ node scripts/report-corridor-coverage.mjs なんば 鶴町四丁目
 
 監査スクリプトは `timetable.json` と `timetable-extra.json` をブラウザと同じルールで結合し、同一 `routeId + direction + destination` はextra側を優先してcoverageを判定します。存在しない停留所名や同名停留所で一意に決められない場合はfail closedします。
 
-route単位のcovered/missingに加えて、曜日区分（weekday/saturday/holiday）ごとのverified/missingも出力します。`verifiedCalendars` を省略したentryは既存互換のため3曜日ともverified扱い、指定したentryは列挙した曜日だけverified扱いです。例えばなんば71号/87号は `verifiedCalendars: ["weekday"]` のため `weekday=verified saturday=missing holiday=missing` と出ます（土曜・休日のEvidence収集はまだ未完了という意味で、架空の時刻を補完済みという意味ではありません）。
+route単位のcovered/missingに加えて、曜日区分（weekday/saturday/holiday）ごとのverified/missingも出力します。本番データ（`data/timetable.json` / `data/timetable-extra.json`）では `verifiedCalendars` が必須ですが、アプリ実行時やレガシー監査データとの互換性のため、`verifiedCalendars` を省略したentryは3曜日ともverified扱いとする互換ロジックを保持しています。例えばなんば71号/87号は `verifiedCalendars: ["weekday"]` のため `weekday=verified saturday=missing holiday=missing` と出ます（土曜・休日のEvidence収集はまだ未完了という意味で、架空の時刻を補完済みという意味ではありません）。
 
 監査ロジックの自動テスト:
 

@@ -368,7 +368,7 @@ test("金曜終便後は未知の週末を飛ばして月曜便を表示しな�
   expectNoBrowserErrors(errors);
 });
 
-test("verifiedCalendars省略の既存entryは従来通り全曜日Verified扱い", async ({ page }) => {
+test("runtime legacy compatibility: verifiedCalendars省略のfixture entryは従来通り全曜日Verified扱い", async ({ page }) => {
   const errors = attachErrorCollector(page);
   await freezeNow(page, "2026-09-05T10:00:00+09:00");
   await installPartial71Timetable(page, {
