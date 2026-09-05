@@ -83,25 +83,23 @@ function validateTimetableEntry(entry, index, source, routeIds) {
     fail(`${prefix}: destination が空です`);
   }
 
-  let verifiedCalendars = new Set(calendars);
-  if (Object.hasOwn(entry, "verifiedCalendars")) {
-    if (!Array.isArray(entry.verifiedCalendars)) {
-      fail(`${prefix}.verifiedCalendars: 配列ではありません`);
-      verifiedCalendars = new Set();
-    } else {
-      verifiedCalendars = new Set();
-      for (let i = 0; i < entry.verifiedCalendars.length; i += 1) {
-        const calendar = entry.verifiedCalendars[i];
-        if (typeof calendar !== "string" || !calendars.includes(calendar)) {
-          fail(`${prefix}.verifiedCalendars[${i}]: 未知の曜日区分です: ${calendar}`);
-          continue;
-        }
-        if (verifiedCalendars.has(calendar)) {
-          fail(`${prefix}.verifiedCalendars: 重複があります: ${calendar}`);
-          continue;
-        }
-        verifiedCalendars.add(calendar);
+  let verifiedCalendars = new Set();
+  if (!Object.hasOwn(entry, "verifiedCalendars")) {
+    fail(`${prefix}: verifiedCalendars がありません`);
+  } else if (!Array.isArray(entry.verifiedCalendars)) {
+    fail(`${prefix}.verifiedCalendars: 配列ではありません`);
+  } else {
+    for (let i = 0; i < entry.verifiedCalendars.length; i += 1) {
+      const calendar = entry.verifiedCalendars[i];
+      if (typeof calendar !== "string" || !calendars.includes(calendar)) {
+        fail(`${prefix}.verifiedCalendars[${i}]: 未知の曜日区分です: ${calendar}`);
+        continue;
       }
+      if (verifiedCalendars.has(calendar)) {
+        fail(`${prefix}.verifiedCalendars: 重複があります: ${calendar}`);
+        continue;
+      }
+      verifiedCalendars.add(calendar);
     }
   }
 

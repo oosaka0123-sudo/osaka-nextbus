@@ -44,6 +44,14 @@ test("weekday-only verified entry is accepted", async () => {
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
 });
 
+test("omitted verifiedCalendars is rejected", async () => {
+  const result = await runValidatorWithMutation((entry) => {
+    delete entry.verifiedCalendars;
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /verifiedCalendars がありません/);
+});
+
 test("verifiedCalendars must be an array", async () => {
   const result = await runValidatorWithMutation((entry) => {
     entry.verifiedCalendars = "weekday";

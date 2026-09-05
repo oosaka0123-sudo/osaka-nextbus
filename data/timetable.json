@@ -158,6 +158,11 @@
       "21:24",
       "22:21",
       "23:22"
+    ],
+    "verifiedCalendars": [
+      "weekday",
+      "saturday",
+      "holiday"
     ]
   },
   {
@@ -573,6 +578,11 @@
       "23:26",
       "23:41",
       "23:56"
+    ],
+    "verifiedCalendars": [
+      "weekday",
+      "saturday",
+      "holiday"
     ]
   },
   {
@@ -680,6 +690,11 @@
       "19:35",
       "20:23",
       "21:20"
+    ],
+    "verifiedCalendars": [
+      "weekday",
+      "saturday",
+      "holiday"
     ]
   },
   {
@@ -833,6 +848,11 @@
       "21:31",
       "22:00",
       "22:33"
+    ],
+    "verifiedCalendars": [
+      "weekday",
+      "saturday",
+      "holiday"
     ]
   },
   {
@@ -1236,6 +1256,11 @@
       "22:36",
       "22:52",
       "23:12"
+    ],
+    "verifiedCalendars": [
+      "weekday",
+      "saturday",
+      "holiday"
     ]
   },
   {
@@ -1352,6 +1377,11 @@
       "19:11",
       "19:46",
       "20:27"
+    ],
+    "verifiedCalendars": [
+      "weekday",
+      "saturday",
+      "holiday"
     ]
   },
   {
@@ -1444,6 +1474,11 @@
       "19:09",
       "20:09",
       "21:06"
+    ],
+    "verifiedCalendars": [
+      "weekday",
+      "saturday",
+      "holiday"
     ]
   }
 ]
