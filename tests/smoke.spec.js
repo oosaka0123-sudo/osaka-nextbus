@@ -387,3 +387,46 @@ test("verifiedCalendars省略の既存entryは従来通り全曜日Verified扱�
   expect(verification.sort()).toEqual(["holiday", "saturday", "weekday"]);
   expectNoBrowserErrors(errors);
 });
+
+test("鶴町二丁目80号あべの橋方面は平日・土曜で利用可能、休日は準備中へfail-closedする", async ({ page }) => {
+  const errors = attachErrorCollector(page);
+
+  // 1. 平日 (2026-09-01 火曜 10:00)
+  await freezeNow(page, "2026-09-01T10:00:00+09:00");
+  await waitForData(page);
+  await selectRoute(
+    page,
+    "鶴町二丁目-89573b",
+    "鶴町二丁目-89573b__80号",
+    "あべの橋方面"
+  );
+  await expect(page.locator("#time-0")).toHaveText("10:12");
+  await expect(page.locator("#pending-message")).toBeHidden();
+
+  // 2. 土曜 (2026-09-05 土曜 10:00)
+  await page.reload();
+  await freezeNow(page, "2026-09-05T10:00:00+09:00");
+  await waitForData(page);
+  await selectRoute(
+    page,
+    "鶴町二丁目-89573b",
+    "鶴町二丁目-89573b__80号",
+    "あべの橋方面"
+  );
+  await expect(page.locator("#time-0")).toHaveText("10:22");
+  await expect(page.locator("#pending-message")).toBeHidden();
+
+  // 3. 休日 (2026-09-06 日曜 10:00) — 部分時刻があってもfail-closedし準備中
+  await page.reload();
+  await freezeNow(page, "2026-09-06T10:00:00+09:00");
+  await waitForData(page);
+  await selectRoute(
+    page,
+    "鶴町二丁目-89573b",
+    "鶴町二丁目-89573b__80号",
+    "あべの橋方面"
+  );
+  await expect(page.locator("#next-bus")).toBeHidden();
+  await expect(page.locator("#pending-message")).toBeVisible();
+  expectNoBrowserErrors(errors);
+});

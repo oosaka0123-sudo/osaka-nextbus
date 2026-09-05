@@ -227,3 +227,27 @@ test("Namba 71/87 production data reports weekday verified, saturday/holiday mis
     });
   }
 });
+
+test("Tsumori-2chome 80号 production data reports weekday/saturday verified, holiday missing", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const { resolve } = await import("node:path");
+
+  const root = resolve(import.meta.dirname, "..");
+  const [stops, routes, base, extra] = await Promise.all(
+    ["data/stops.json", "data/routes.json", "data/timetable.json", "data/timetable-extra.json"].map(
+      async (path) => JSON.parse(await readFile(resolve(root, path), "utf8")),
+    ),
+  );
+
+  const report = buildCoverageReport({ stops, routes, base, extra }, ["鶴町二丁目"]);
+  const tsumori2Stop = report.stops[0];
+
+  const route = tsumori2Stop.routes.find((r) => r.label === "80号");
+  assert.ok(route, "80号 route not found");
+  assert.equal(route.covered, true);
+  assert.deepEqual(route.calendarVerification, {
+    weekday: "verified",
+    saturday: "verified",
+    holiday: "missing",
+  });
+});
