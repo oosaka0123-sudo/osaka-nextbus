@@ -32,8 +32,9 @@
  *   1つの (系統, 方面, 行先) の組み合わせにつき1エントリとし、その中に
  *   平日(weekday) / 土曜(saturday) / 休日(holiday) それぞれの発車時刻
  *   ("HH:MM" の配列、当日 05:00〜翌日未明想定で24:00以降の表記も可) を持つ。
- *   optional の verifiedCalendars を省略した既存entryは3曜日すべて確認済みとして
- *   従来互換で扱う。指定する場合は、Evidence確認済み曜日だけを列挙し、未確認曜日の
+ *   本番データ(data/timetable.json等)では verifiedCalendars が必須。
+ *   アプリ実行時・旧データ/fixture互換のため、verifiedCalendars を省略したentryは
+ *   3曜日すべて確認済みとして扱う。Evidence確認済み曜日だけを列挙し、未確認曜日の
  *   配列は空にする。
  *   同じ系統番号でも上り/下りや行先違いが複数存在する場合は、
  *   timetable.json に複数エントリを追加すればよい。

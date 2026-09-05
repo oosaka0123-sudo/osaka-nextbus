@@ -14,8 +14,7 @@ export const DEFAULT_STOP_NAMES = [
 
 export const CALENDAR_TYPES = ["weekday", "saturday", "holiday"];
 
-// verifiedCalendars省略entryはbackward compatibilityとして3曜日すべてverified扱いにする
-// (js/data.js の normalizeVerifiedCalendars / scripts/validate-data.mjs と同じ規則)。
+// verifiedCalendars省略entryはlegacy audit compatibilityとして3曜日すべてverified扱いにする。
 export function normalizeVerifiedCalendars(entry) {
   if (!Array.isArray(entry?.verifiedCalendars)) return [...CALENDAR_TYPES];
   const verified = entry.verifiedCalendars.filter((calendar) => CALENDAR_TYPES.includes(calendar));
