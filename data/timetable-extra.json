@@ -75,6 +75,11 @@
       "17:47",
       "18:52",
       "21:13"
+    ],
+    "verifiedCalendars": [
+      "weekday",
+      "saturday",
+      "holiday"
     ]
   },
   {
@@ -135,6 +140,11 @@
       "18:40",
       "19:42",
       "20:54"
+    ],
+    "verifiedCalendars": [
+      "weekday",
+      "saturday",
+      "holiday"
     ]
   },
   {
@@ -228,6 +238,11 @@
       "19:28",
       "20:28",
       "21:28"
+    ],
+    "verifiedCalendars": [
+      "weekday",
+      "saturday",
+      "holiday"
     ]
   },
   {
@@ -265,7 +280,12 @@
       "18:32"
     ],
     "saturday": [],
-    "holiday": []
+    "holiday": [],
+    "verifiedCalendars": [
+      "weekday",
+      "saturday",
+      "holiday"
+    ]
   },
   {
     "routeId": "鶴町一丁目-3a81dc__90号",
@@ -356,6 +376,11 @@
       "19:09",
       "20:09",
       "21:06"
+    ],
+    "verifiedCalendars": [
+      "weekday",
+      "saturday",
+      "holiday"
     ]
   },
   {
