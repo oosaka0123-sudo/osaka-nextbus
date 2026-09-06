@@ -48,7 +48,7 @@ test("なんば71/87のVerified 3曜日データ分離をproduction merge後も�
   await waitForData(page);
 
   const data = await page.evaluate(async () => {
-    const entries = await fetch("data/timetable-extra.json").then((response) => response.json());
+    const entries = await fetch("data/timetable.json").then((response) => response.json());
     const route71 = entries.find(
       (entry) =>
         entry.routeId === "なんば-4c8868__71号" &&
