@@ -4,7 +4,7 @@
 
 **目的:** GPSで近い停留所を表示し、停留所 → 系統 → 方面を選ぶと、次の3便を「あと○分」で確認できます。
 
-## 現在の状態（2026-09-05）
+## 現在の状態（2026-09-06）
 
 - 停留所: **992件**
 - 停留所×系統: **1,915件**
@@ -17,8 +17,8 @@
 ## 収録済み時刻表
 
 ### なんば
-- 71号 → 鶴町四丁目
-- 87号 → 新千歳経由・鶴町四丁目
+- 71号 → 鶴町四丁目（平日・土曜・休日を公式Bus-Vision Evidenceで確認済み）
+- 87号 → 新千歳経由・鶴町四丁目（平日・土曜・休日を公式Bus-Vision Evidenceで確認済み）
 
 ### 鶴町二丁目
 - 80号 → あべの橋方面
@@ -108,7 +108,8 @@ osaka-nextbus/
 │   ├── convert-ksj-p11.mjs
 │   └── timetable-csv-to-json.mjs
 ├── tests/
-│   └── smoke.spec.js
+│   ├── smoke.spec.js
+│   └── namba-calendar.spec.js
 └── icons/
 ```
 
@@ -167,7 +168,7 @@ node scripts/report-corridor-coverage.mjs なんば 鶴町四丁目
 
 監査スクリプトは `timetable.json` と `timetable-extra.json` をブラウザと同じルールで結合し、同一 `routeId + direction + destination` はextra側を優先してcoverageを判定します。存在しない停留所名や同名停留所で一意に決められない場合はfail closedします。
 
-route単位のcovered/missingに加えて、曜日区分（weekday/saturday/holiday）ごとのverified/missingも出力します。本番データ（`data/timetable.json` / `data/timetable-extra.json`）では `verifiedCalendars` が必須ですが、アプリ実行時やレガシー監査データとの互換性のため、`verifiedCalendars` を省略したentryは3曜日ともverified扱いとする互換ロジックを保持しています。例えばなんば71号/87号は `verifiedCalendars: ["weekday"]` のため `weekday=verified saturday=missing holiday=missing` と出ます（土曜・休日のEvidence収集はまだ未完了という意味で、架空の時刻を補完済みという意味ではありません）。
+route単位のcovered/missingに加えて、曜日区分（weekday/saturday/holiday）ごとのverified/missingも出力します。本番データ（`data/timetable.json` / `data/timetable-extra.json`）では `verifiedCalendars` が必須ですが、アプリ実行時やレガシー監査データとの互換性のため、`verifiedCalendars` を省略したentryは3曜日ともverified扱いとする互換ロジックを保持しています。なんば71号/87号は現在 `verifiedCalendars: ["weekday", "saturday", "holiday"]` で、3曜日ともverifiedです。
 
 監査ロジックの自動テスト:
 
@@ -177,16 +178,15 @@ npm run test:coverage-audit
 
 ## ブラウザ回帰テスト
 
-Playwright（Chromium）で、現在は次の8シナリオを自動テストします。
+Playwright（Chromium）で、次を含む実ブラウザ回帰を自動テストします。
 
-1. 鶴町一丁目71号の次の3便表示
-2. `timetable-extra.json` 側の鶴町一丁目91号がUIへ結合されること
-3. extra側の補正がbaseより優先され、90号休日の誤読 `13:51` が除外・80号休日 `09:51` が反映されること
-4. 幸町一丁目71号の `24:07` が翌日 `00:07` として表示されること
-5. 停留所・系統・方面の `localStorage` 保存と再読み込み復元
-6. GPS成功時に近い順10停留所へ絞り込まれること
-7. GPS拒否時に全停留所から手動選択できること
-8. Service Worker v29でオフライン時もextra側91号を利用できること
+- 鶴町一丁目・幸町一丁目など既存系統の次便表示
+- `timetable-extra.json` とbaseのproduction merge / override
+- 24時台のservice-day表示
+- `localStorage` 復元
+- GPS成功・拒否時の挙動
+- Service Worker **v30** のオフライン動作
+- なんば71号・87号の平日 / 土曜 / 休日データ件数、3曜日verified、代表時刻のUI表示
 
 各テストでは可能な範囲で `pageerror` / `console.error` も監視します。
 
@@ -194,7 +194,7 @@ GitHub Actionsの `.github/workflows/validate-data.yml` がpush/PR時に自動�
 
 ## Service Worker
 
-現在のキャッシュ版は **v29** です。
+現在のキャッシュ版は **v30** です。
 
 オンライン時はネットワークを優先し、成功したレスポンスをキャッシュします。オフライン時のみキャッシュへフォールバックします。
 
