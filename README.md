@@ -203,7 +203,7 @@ GitHub Actionsの `.github/workflows/validate-data.yml` がpush/PR時に自動�
 ## 時刻表を追加・補正するときの運用
 
 1. 現地掲示写真など正当な情報源から転記
-2. `routeId` が `routes.json` に存在することを確認
+2. `routeId` が `routes.json` の `id` と完全一致させる
 3. 平日 / 土曜 / 休日を昇順で登録
 4. 写真再照合による補正は、必要に応じて `timetable-extra.json` の同一複合キーで上書きする
 5. `metadata.json` に出典・近似補間・補正理由を記録
