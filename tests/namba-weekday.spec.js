@@ -43,7 +43,7 @@ async function selectNambaRoute(page, routeId, directionText) {
   await page.selectOption("#direction-select", await option.getAttribute("value"));
 }
 
-test("なんば71/87のVerified平日raw分離をproduction merge後も保持する", async ({ page }) => {
+test("なんば71/87のVerified 3曜日データ分離をproduction merge後も保持する", async ({ page }) => {
   const errors = attachErrorCollector(page);
   await waitForData(page);
 
@@ -65,13 +65,15 @@ test("なんば71/87のVerified平日raw分離をproduction merge後も保持す
   });
 
   expect(data.route71.weekday).toHaveLength(125);
+  expect(data.route71.saturday).toHaveLength(143);
+  expect(data.route71.holiday).toHaveLength(136);
+
   expect(data.route87.weekday).toHaveLength(36);
-  expect(data.route71.verifiedCalendars).toEqual(["weekday"]);
-  expect(data.route87.verifiedCalendars).toEqual(["weekday"]);
-  expect(data.route71.saturday).toEqual([]);
-  expect(data.route71.holiday).toEqual([]);
-  expect(data.route87.saturday).toEqual([]);
-  expect(data.route87.holiday).toEqual([]);
+  expect(data.route87.saturday).toHaveLength(32);
+  expect(data.route87.holiday).toHaveLength(28);
+
+  expect(data.route71.verifiedCalendars).toEqual(["weekday", "saturday", "holiday"]);
+  expect(data.route87.verifiedCalendars).toEqual(["weekday", "saturday", "holiday"]);
 
   expect(data.route71.weekday).toContain("07:02");
   expect(data.route71.weekday).toContain("08:00");
@@ -126,13 +128,30 @@ test("なんば71号の平日深夜00:02をservice-day 24:02として表示で�
   expectNoBrowserErrors(errors);
 });
 
-test("なんば71号は未確認土曜に入ると月曜へ飛ばず準備中を表示する", async ({ page }) => {
+test("なんば71号は土曜10:00から10:04 10:09 10:14を表示する", async ({ page }) => {
   const errors = attachErrorCollector(page);
   await freezeNow(page, "2026-09-05T10:00:00+09:00");
   await waitForData(page);
   await selectNambaRoute(page, "なんば-4c8868__71号", "鶴町四丁目方面");
 
-  await expect(page.locator("#next-bus")).toBeHidden();
-  await expect(page.locator("#pending-message")).toBeVisible();
+  await expect(page.locator("#dest-0")).toHaveText("鶴町四丁目");
+  await expect(page.locator("#time-0")).toHaveText("10:04");
+  await expect(page.locator("#time-1")).toHaveText("10:09");
+  await expect(page.locator("#time-2")).toHaveText("10:14");
+  await expect(page.locator("#pending-message")).toBeHidden();
+  expectNoBrowserErrors(errors);
+});
+
+test("なんば87号は休日07:10から07:12 07:58 08:37を表示する", async ({ page }) => {
+  const errors = attachErrorCollector(page);
+  await freezeNow(page, "2026-09-06T07:10:00+09:00");
+  await waitForData(page);
+  await selectNambaRoute(page, "なんば-4c8868__87号", "新千歳経由・鶴町四丁目方面");
+
+  await expect(page.locator("#dest-0")).toHaveText("鶴町四丁目");
+  await expect(page.locator("#time-0")).toHaveText("07:12");
+  await expect(page.locator("#time-1")).toHaveText("07:58");
+  await expect(page.locator("#time-2")).toHaveText("08:37");
+  await expect(page.locator("#pending-message")).toBeHidden();
   expectNoBrowserErrors(errors);
 });

@@ -202,7 +202,7 @@ test("identifies shared route candidates across stops and preserves distinct rou
   assert.ok(report.candidateNotice.includes("決定論的な存在棚卸し"));
 });
 
-test("Namba 71/87 production data reports weekday verified, saturday/holiday missing", async () => {
+test("Namba 71/87 production data reports all 3 calendars verified", async () => {
   const { readFile } = await import("node:fs/promises");
   const { resolve } = await import("node:path");
 
@@ -222,8 +222,8 @@ test("Namba 71/87 production data reports weekday verified, saturday/holiday mis
     assert.equal(route.covered, true);
     assert.deepEqual(route.calendarVerification, {
       weekday: "verified",
-      saturday: "missing",
-      holiday: "missing",
+      saturday: "verified",
+      holiday: "verified",
     });
   }
 });
