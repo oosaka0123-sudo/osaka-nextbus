@@ -36,7 +36,6 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           label_trigger: 'status:doing'
-          branch_name_template: '{{prefix}}issue-{{entityNumber}}'
           claude_args: |-
             --model sonnet
             --allowedTools "Read,Edit,Write,Glob,Grep,LS,Bash(git *),Bash(gh *),Bash(npm *),Bash(node *),Bash(python3 *)"
@@ -51,10 +50,10 @@ jobs:
 
             Repository governance and single source of truth rules:
             - GitHub Issues are the Single Source of Truth for tasks.
-            - 1 Issue = 1 Branch. The Claude Code Action manages the dedicated issue branch using branch_name_template.
-            - Use the branch prepared by the Claude Code Action. Do not create, rename, or switch to another branch.
+            - 1 Issue = 1 Active Owner. Use the dedicated branch prepared by the Claude Code Action for this run.
+            - Do not create, rename, or switch to another branch.
             - Never commit or push to the repository default branch.
-            - Create a Pull Request (PR) from the Action-managed issue branch for all changes.
+            - Create a Pull Request (PR) from the Action-managed task branch for all changes.
             - Execute required verifications (e.g. `npm run validate`, `python3 -m unittest discover -s collector/tests -t .`, smoke tests) before submitting or updating PRs.
             - Strictly follow the 3-strike rule: if a fix fails tests 3 times, do not loop infinitely; mark status as BLOCKED on the issue with a summary.
             - Keep PERMISSION_GRANTED=False in collector/config.py.
