@@ -16,34 +16,39 @@ def registry_document():
 
 
 class EvidenceRegistryTest(unittest.TestCase):
-    def test_committed_registry_loads_verified_tsurumachi_and_namba(self):
+    def test_committed_registry_loads_verified_targets(self):
         entries = load_evidence_registry()
-        self.assertEqual(len(entries), 2)
+        self.assertEqual(len(entries), 4)
 
-        by_stop = {entry.stop_name: entry for entry in entries}
-        self.assertEqual(set(by_stop), {"鶴町三丁目", "なんば"})
+        tsurumachi3 = next(item for item in entries if item.stop_name == "鶴町三丁目")
+        self.assertEqual(tsurumachi3.stop_cd, "811")
+        self.assertEqual(tsurumachi3.pole_cd, "80")
+        self.assertEqual(tsurumachi3.str_line_list, "71-1-1_87-1-1")
 
-        tsurumachi = by_stop["鶴町三丁目"]
-        self.assertEqual(tsurumachi.stop_cd, "811")
-        self.assertEqual(tsurumachi.pole_cd, "80")
-        self.assertEqual(tsurumachi.str_line_list, "71-1-1_87-1-1")
-
-        namba = by_stop["なんば"]
+        namba = next(item for item in entries if item.stop_name == "なんば")
         self.assertEqual(namba.stop_cd, "360")
         self.assertEqual(namba.pole_cd, "91")
         self.assertEqual(namba.str_line_list, "null")
         self.assertEqual(namba.lang, "0")
         self.assertIn("strLineList=null", namba.source_url)
 
-        self.assertNotIn("809", {item.stop_cd for item in entries})
+        tsurumachi1 = [item for item in entries if item.stop_name == "鶴町一丁目"]
+        self.assertEqual(len(tsurumachi1), 2)
+        by_pole = {item.pole_cd: item for item in tsurumachi1}
+        self.assertEqual(set(by_pole), {"60", "70"})
+        self.assertEqual(by_pole["60"].stop_cd, "809")
+        self.assertEqual(by_pole["60"].str_line_list, "71-1-1")
+        self.assertEqual(by_pole["70"].stop_cd, "809")
+        self.assertEqual(by_pole["70"].str_line_list, "null")
+        self.assertIn("strLineList=null", by_pole["70"].source_url)
 
-    def test_literal_null_line_list_must_match_observed_url(self):
+    def test_literal_null_line_lists_match_observed_urls(self):
         doc = registry_document()
-        namba = next(item for item in doc["entries"] if item["stopName"] == "なんば")
-        self.assertEqual(namba["strLineList"], "null")
+        literal_null_entries = [item for item in doc["entries"] if item["strLineList"] == "null"]
+        self.assertEqual({item["stopName"] for item in literal_null_entries}, {"なんば", "鶴町一丁目"})
         validated = validate_registry_document(doc)
-        verified_namba = next(item for item in validated if item.stop_name == "なんば")
-        self.assertEqual(verified_namba.str_line_list, "null")
+        verified_nulls = [item for item in validated if item.str_line_list == "null"]
+        self.assertEqual({item.stop_name for item in verified_nulls}, {"なんば", "鶴町一丁目"})
 
     def test_declared_stop_cd_must_match_url(self):
         doc = registry_document()
