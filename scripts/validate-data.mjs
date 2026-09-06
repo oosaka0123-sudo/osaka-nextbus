@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+// Deterministic data-validation gate used by local checks and GitHub Actions.
+
 import { readFile } from "node:fs/promises";
 
 const FILES = {
