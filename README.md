@@ -178,7 +178,7 @@ npm run test:coverage-audit
 
 ## ブラウザ回帰テスト
 
-Playwright（Chromium）では現在20テストを実行し、次を含む実ブラウザ回帰を確認します。
+Playwright（Chromium）で、次を含む実ブラウザ回帰を自動テストします。
 
 - 鶴町一丁目・幸町一丁目など既存系統の次便表示
 - `timetable-extra.json` とbaseのproduction merge / override
