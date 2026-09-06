@@ -22,6 +22,28 @@
       "lang": "0",
       "observedAt": "2026-09-03",
       "evidenceNote": "公式Bus-Vision公開画面・公開検索結果で、なんば【西】②のりばとURLを確認。Issue #57にVERIFIED evidenceとしてstopCd=360 / poleCd=91 / literal strLineList=nullを記録済み。"
+    },
+    {
+      "stopName": "鶴町一丁目",
+      "directionNote": "市内向き（大阪駅前・なんば・あべの橋・野田阪神前・ドーム前千代崎方面）",
+      "sourceUrl": "https://oc.bus-vision.jp/osakacitybus/view/diagram.html?stopCd=809&poleCd=60&strLineList=71-1-1&lang=0",
+      "stopCd": "809",
+      "poleCd": "60",
+      "strLineList": "71-1-1",
+      "lang": "0",
+      "observedAt": "2026-09-06",
+      "evidenceNote": "Opera接続で公式Bus-Vision公開のりば/路線選択画面を通常遷移して確認。鶴町一丁目、市内向きpoleCd=60、71号なんば方面の実在diagram URLをIssue #39 comment 5559857945へVERIFIED evidenceとして記録。"
+    },
+    {
+      "stopName": "鶴町一丁目",
+      "directionNote": "鶴町四丁目向き",
+      "sourceUrl": "https://oc.bus-vision.jp/osakacitybus/view/diagram.html?stopCd=809&poleCd=70&strLineList=null&lang=0",
+      "stopCd": "809",
+      "poleCd": "70",
+      "strLineList": "null",
+      "lang": "0",
+      "observedAt": "2026-09-06",
+      "evidenceNote": "Opera接続で公式Bus-Vision公開画面を通常遷移して確認。画面に鶴町一丁目（鶴町四行）と路線6個選択中が表示され、URLのliteral strLineList=nullをIssue #39 comment 5559857945へVERIFIED evidenceとして記録。"
     }
   ]
 }
