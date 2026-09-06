@@ -36,6 +36,9 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           label_trigger: 'status:doing'
+          claude_args: |-
+            --model sonnet
+            --allowedTools "Read,Edit,Write,Glob,Grep,LS,Bash(git *),Bash(gh *),Bash(npm *),Bash(node *),Bash(python3 *)"
           prompt: |-
             You are Claude Code, an implementer agent in the osaka-nextbus multi-agent development system.
 
