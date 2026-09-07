@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 // Deterministic data-validation gate used by local checks and GitHub Actions.
+// Claude tag-mode E2E: changes must stay on the Action-managed task branch until PR merge.
 
 import { readFile } from "node:fs/promises";
 
