@@ -42,5 +42,5 @@ jobs:
           # action to agent mode, which does not create the Issue task branch.
           claude_args: |-
             --model sonnet
-            --allowedTools "Read,Edit,Write,Glob,Grep,LS,Bash(git *),Bash(gh *),Bash(npm *),Bash(node *),Bash(python3 *)"
-            --append-system-prompt "Before implementing, read the target Issue body and comments, AGENTS.md, DECISIONS.md, and RUNBOOK.md. GitHub Issues are the task SSOT. Follow 1 Issue = 1 Active Owner. Use the Claude Code Action-managed task branch; never commit or push to the repository default branch. Create a Pull Request for all changes. Run the required validation and smoke tests before submitting the PR. Follow the 3-strike rule and keep collector/config.py PERMISSION_GRANTED=False."
+            --allowedTools "Read,Edit,Write,Glob,Grep,LS,WebFetch,WebSearch,Bash(git *),Bash(gh *),Bash(npm *),Bash(node *),Bash(python3 *)"
+            --append-system-prompt "Before implementing, read the target Issue body and comments, AGENTS.md, DECISIONS.md, and RUNBOOK.md. GitHub Issues are the task SSOT. Follow 1 Issue = 1 Active Owner. Use the Claude Code Action-managed task branch; never commit or push to the repository default branch. Create a Pull Request for all changes. Run the required validation and smoke tests before submitting the PR. Follow the 3-strike rule and keep collector/config.py PERMISSION_GRANTED=False. External web access is read-only and limited to public pages needed for the Issue; do not access private APIs, bypass authentication, or perform mass scraping."
