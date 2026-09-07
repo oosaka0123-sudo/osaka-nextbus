@@ -44,6 +44,28 @@
       "lang": "0",
       "observedAt": "2026-09-06",
       "evidenceNote": "Opera接続で公式Bus-Vision公開画面を通常遷移して確認。画面に鶴町一丁目（鶴町四行）と路線6個選択中が表示され、URLのliteral strLineList=nullをIssue #39 comment 5559857945へVERIFIED evidenceとして記録。"
+    },
+    {
+      "stopName": "三軒家",
+      "directionNote": "市内向き（なんば方面）",
+      "sourceUrl": "https://oc.bus-vision.jp/osakacitybus/view/diagram.html?poleCd=90&stopCd=796&strLineList=71-1-1",
+      "stopCd": "796",
+      "poleCd": "90",
+      "strLineList": "71-1-1",
+      "lang": "0",
+      "observedAt": "2026-09-07",
+      "evidenceNote": "公式Bus-Vision公開検索結果で三軒家(なんば/野田阪神前/ドーム前千代崎行)の71号選択URLを確認。Issue #127でstopCd=796 / poleCd=90 / strLineList=71-1-1をOBSERVEDとして記録。"
+    },
+    {
+      "stopName": "三軒家",
+      "directionNote": "鶴町四丁目向き",
+      "sourceUrl": "https://oc.bus-vision.jp/osakacitybus/view/diagram.html?poleCd=80&stopCd=796&strLineList=71-2-1",
+      "stopCd": "796",
+      "poleCd": "80",
+      "strLineList": "71-2-1",
+      "lang": "0",
+      "observedAt": "2026-09-07",
+      "evidenceNote": "公式Bus-Vision公開検索結果で三軒家(鶴町四/西船町/地下鉄住之江公園行)の71号選択URL構造を確認。Issue #127でstopCd=796 / poleCd=80 / strLineList=71-2-1をOBSERVEDとして記録。"
     }
   ]
 }
