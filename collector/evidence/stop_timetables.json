@@ -48,7 +48,7 @@
     {
       "stopName": "三軒家",
       "directionNote": "市内向き（なんば方面）",
-      "sourceUrl": "https://oc.bus-vision.jp/osakacitybus/view/diagram.html?poleCd=90&stopCd=796&strLineList=71-1-1",
+      "sourceUrl": "https://oc.bus-vision.jp/osakacitybus/view/diagram.html?lang=0&poleCd=90&stopCd=796&strLineList=71-1-1",
       "stopCd": "796",
       "poleCd": "90",
       "strLineList": "71-1-1",
@@ -59,7 +59,7 @@
     {
       "stopName": "三軒家",
       "directionNote": "鶴町四丁目向き",
-      "sourceUrl": "https://oc.bus-vision.jp/osakacitybus/view/diagram.html?poleCd=80&stopCd=796&strLineList=71-2-1",
+      "sourceUrl": "https://oc.bus-vision.jp/osakacitybus/view/diagram.html?lang=0&poleCd=80&stopCd=796&strLineList=71-2-1",
       "stopCd": "796",
       "poleCd": "80",
       "strLineList": "71-2-1",
