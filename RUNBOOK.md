@@ -104,7 +104,7 @@ PWA / Service Worker確認時はキャッシュとcontroller更新に注意す�
 ## 7. Service Worker更新
 
 PWA配信物を変更して旧キャッシュが問題になる場合だけ`sw.js`の`CACHE_VERSION`を上げる。
-現在の基準は`v29`。
+現在の基準は`v31`。
 
 文書のみ、collectorのみ、CIのみの変更では無意味に上げない。
 
