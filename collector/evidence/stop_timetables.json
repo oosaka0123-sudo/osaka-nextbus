@@ -110,6 +110,28 @@
       "lang": "0",
       "observedAt": "2026-09-08",
       "evidenceNote": "公式Bus-Vision公開ページで三軒家東四丁目の鶴町四丁目向き共通行先グループを確認。Issue #139でstopCd=797 / poleCd=80 / strLineList=55-2-1_71-2-1_90-2-1_91-2-1_94-2-1をPM再検証し、各便detail URLのlineCd=71のみ抽出。平日2026-09-08・土曜2026-09-12・休日2026-09-13の全71号時刻を検証し、深夜00時台は24時台へ正規化。"
+    },
+    {
+      "stopName": "永楽橋筋",
+      "directionNote": "市内向き（なんば方面）",
+      "sourceUrl": "https://oc.bus-vision.jp/osakacitybus/view/diagram.html?stopCd=798&poleCd=90&strLineList=71-1-1&lang=0",
+      "stopCd": "798",
+      "poleCd": "90",
+      "strLineList": "71-1-1",
+      "lang": "0",
+      "observedAt": "2026-09-08",
+      "evidenceNote": "公式Bus-Vision公開ページで永楽橋筋71号なんば方面を確認。Issue #141でstopCd=798 / poleCd=90 / strLineList=71-1-1をPM検証し、平日2026-09-08・土曜2026-09-12・休日2026-09-13の全時刻を検証。"
+    },
+    {
+      "stopName": "永楽橋筋",
+      "directionNote": "鶴町四丁目向き",
+      "sourceUrl": "https://oc.bus-vision.jp/osakacitybus/view/diagram.html?stopCd=798&poleCd=80&strLineList=55-2-1_71-2-1_90-2-1_91-2-1_94-2-1&lang=0",
+      "stopCd": "798",
+      "poleCd": "80",
+      "strLineList": "55-2-1_71-2-1_90-2-1_91-2-1_94-2-1",
+      "lang": "0",
+      "observedAt": "2026-09-08",
+      "evidenceNote": "公式Bus-Vision公開ページで永楽橋筋の鶴町四丁目向き共通行先グループを確認。Issue #141で各便detail URLのlineCd=71のみ抽出し、平日・土曜・休日の全71号時刻を検証。深夜00時台は24時台へ正規化。"
     }
   ]
 }
