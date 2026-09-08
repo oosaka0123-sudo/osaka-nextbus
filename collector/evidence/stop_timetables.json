@@ -176,6 +176,28 @@
       "lang": "0",
       "observedAt": "2026-09-08",
       "evidenceNote": "公式Bus-Vision公開ページで千島の鶴町四丁目向き共通行先グループを確認。Issue #145で各便detail URLのlineCd=71のみ抽出し、平日・土曜・休日の全71号時刻を検証。深夜00時台は24時台へ正規化。"
+    },
+    {
+      "stopName": "大正区役所前",
+      "directionNote": "市内向き（なんば方面）",
+      "sourceUrl": "https://oc.bus-vision.jp/osakacitybus/view/diagram.html?stopCd=936&poleCd=90&strLineList=71-1-1&lang=0",
+      "stopCd": "936",
+      "poleCd": "90",
+      "strLineList": "71-1-1",
+      "lang": "0",
+      "observedAt": "2026-09-08",
+      "evidenceNote": "公式Bus-Vision公開ページで大正区役所前71号なんば方面を確認。Issue #147でstopCd=936 / poleCd=90 / strLineList=71-1-1をPM再検証し、平日・土曜・休日の全時刻を検証。"
+    },
+    {
+      "stopName": "大正区役所前",
+      "directionNote": "鶴町四丁目向き",
+      "sourceUrl": "https://oc.bus-vision.jp/osakacitybus/view/diagram.html?stopCd=936&poleCd=80&strLineList=55-2-1_71-2-1_80-2-1_90-2-1_91-2-1&lang=0",
+      "stopCd": "936",
+      "poleCd": "80",
+      "strLineList": "55-2-1_71-2-1_80-2-1_90-2-1_91-2-1",
+      "lang": "0",
+      "observedAt": "2026-09-08",
+      "evidenceNote": "公式Bus-Vision公開ページで大正区役所前の鶴町四丁目向き共通行先グループを確認。Issue #147で各便detail URLのlineCd=71のみ抽出し、平日・土曜・休日の全71号時刻を検証。深夜00時台は24時台へ正規化。"
     }
   ]
 }
