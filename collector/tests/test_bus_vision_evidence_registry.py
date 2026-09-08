@@ -18,7 +18,7 @@ def registry_document():
 class EvidenceRegistryTest(unittest.TestCase):
     def test_committed_registry_loads_verified_targets(self):
         entries = load_evidence_registry()
-        self.assertEqual(len(entries), 14)
+        self.assertEqual(len(entries), 16)
 
         tsurumachi3 = next(item for item in entries if item.stop_name == "鶴町三丁目")
         self.assertEqual(tsurumachi3.stop_cd, "811")
@@ -86,6 +86,17 @@ class EvidenceRegistryTest(unittest.TestCase):
         self.assertEqual(by_pole["90"].str_line_list, "71-1-1")
         self.assertEqual(by_pole["80"].stop_cd, "798")
         self.assertEqual(by_pole["80"].str_line_list, "55-2-1_71-2-1_90-2-1_91-2-1_94-2-1")
+
+    def test_chishima_registry_entries(self):
+        entries = load_evidence_registry()
+        chishima = [item for item in entries if item.stop_name == "千島"]
+        self.assertEqual(len(chishima), 2)
+        by_pole = {item.pole_cd: item for item in chishima}
+        self.assertEqual(set(by_pole), {"80", "90"})
+        self.assertEqual(by_pole["90"].stop_cd, "799")
+        self.assertEqual(by_pole["90"].str_line_list, "71-1-1")
+        self.assertEqual(by_pole["80"].stop_cd, "799")
+        self.assertEqual(by_pole["80"].str_line_list, "55-2-1_71-2-1_80-2-1_90-2-1_91-2-1")
 
     def test_literal_null_line_lists_match_observed_urls(self):
         doc = registry_document()
