@@ -18,7 +18,7 @@ def registry_document():
 class EvidenceRegistryTest(unittest.TestCase):
     def test_committed_registry_loads_verified_targets(self):
         entries = load_evidence_registry()
-        self.assertEqual(len(entries), 6)
+        self.assertEqual(len(entries), 8)
 
         tsurumachi3 = next(item for item in entries if item.stop_name == "鶴町三丁目")
         self.assertEqual(tsurumachi3.stop_cd, "811")
@@ -50,6 +50,15 @@ class EvidenceRegistryTest(unittest.TestCase):
         self.assertEqual(by_pole["90"].str_line_list, "71-1-1")
         self.assertEqual(by_pole["80"].stop_cd, "796")
         self.assertEqual(by_pole["80"].str_line_list, "71-2-1")
+
+        taishobashi = [item for item in entries if item.stop_name == "\u5927\u6b63\u6a4b"]
+        self.assertEqual(len(taishobashi), 2)
+        by_pole = {item.pole_cd: item for item in taishobashi}
+        self.assertEqual(set(by_pole), {"31", "41"})
+        self.assertEqual(by_pole["41"].stop_cd, "820")
+        self.assertEqual(by_pole["41"].str_line_list, "71-1-1")
+        self.assertEqual(by_pole["31"].stop_cd, "820")
+        self.assertEqual(by_pole["31"].str_line_list, "71-2-1")
 
     def test_literal_null_line_lists_match_observed_urls(self):
         doc = registry_document()
