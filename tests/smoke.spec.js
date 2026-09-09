@@ -36,7 +36,7 @@ function hhmm(locator) {
   return expect(locator).toHaveText(/^\d{2}:\d{2}$/);
 }
 
-test("蜿ｷ謨ｰ譛ｪ驕ｸ謚槭〒縺ｯ譌ｩ縺乗擂繧矩・莉ｶ縺ｫ蜿ｷ謨ｰ繝ｻ譎ょ綾繝ｻ陦後″蜈医′蜃ｺ繧・, async ({ page }) => {
+test("号数未選択では早く来る順5件に号数・時刻・行き先が出る", async ({ page }) => {
   const errors = attachErrorCollector(page);
   const fixedNow = new Date("2026-09-01T10:00:00+09:00").getTime();
   await page.addInitScript(({ now }) => {
@@ -53,7 +53,7 @@ test("蜿ｷ謨ｰ譛ｪ驕ｸ謚槭〒縺ｯ譌ｩ縺乗擂繧矩・莉ｶ�
   }, { now: fixedNow });
 
   await waitForData(page);
-  await page.selectOption("#stop-select", "鮓ｴ逕ｺ荳荳∫岼-3a81dc");
+  await page.selectOption("#stop-select", "鶴町一丁目-3a81dc");
 
   await expect(page.locator("#route-select")).toHaveValue("");
   await expect(page.locator("#direction-select")).toHaveValue("");
@@ -67,45 +67,45 @@ test("蜿ｷ謨ｰ譛ｪ驕ｸ謚槭〒縺ｯ譌ｩ縺乗擂繧矩・莉ｶ�
     await expect(item.locator(".overview-route")).not.toHaveText("");
     await expect(item.locator(".overview-time")).toHaveText(/^\d{2}:\d{2}$/);
     await expect(item.locator(".overview-destination")).not.toHaveText("");
-    await expect(item.locator(".overview-eta")).toHaveText(/^縺ゅ→ \d+蛻・/);
+    await expect(item.locator(".overview-eta")).toHaveText(/^あと \d+分$/);
   }
   expectNoBrowserErrors(errors);
 });
 
-test("鮓ｴ逕ｺ荳荳∫岼71蜿ｷ縺ｧ谺｡縺ｮ3萓ｿ縺瑚｡ｨ遉ｺ縺輔ｌ繧・, async ({ page }) => {
+test("鶴町一丁目71号で次の3便が表示される", async ({ page }) => {
   const errors = attachErrorCollector(page);
   await waitForData(page);
   await selectRoute(
     page,
-    "鮓ｴ逕ｺ荳荳∫岼-3a81dc",
-    "鮓ｴ逕ｺ荳荳∫岼-3a81dc__71蜿ｷ",
-    "縺ｪ繧薙・譁ｹ髱｢"
+    "鶴町一丁目-3a81dc",
+    "鶴町一丁目-3a81dc__71号",
+    "なんば方面"
   );
 
   await expect(page.locator("#overview-board")).toBeHidden();
-  await expect(page.locator("#dest-0")).toHaveText("縺ｪ繧薙・");
+  await expect(page.locator("#dest-0")).toHaveText("なんば");
   await hhmm(page.locator("#time-0"));
   await hhmm(page.locator("#time-1"));
   await hhmm(page.locator("#time-2"));
   await expect(page.locator("#eta-0-seconds")).toHaveText(/^\d{2}$/);
-  await expect(page.locator("#eta-1")).toHaveText(/^縺ゅ→ \d+蛻・/);
-  await expect(page.locator("#eta-2")).toHaveText(/^縺ゅ→ \d+蛻・/);
+  await expect(page.locator("#eta-1")).toHaveText(/^あと \d+分$/);
+  await expect(page.locator("#eta-2")).toHaveText(/^あと \d+分$/);
   await expect(page.locator("#locate-btn")).toBeInViewport();
   await expect(page.locator("#pending-message")).toBeHidden();
   expectNoBrowserErrors(errors);
 });
 
-test("extra蛛ｴ縺ｮ鮓ｴ逕ｺ荳荳∫岼91蜿ｷ縺袈I縺ｫ邨仙粋縺輔ｌ繧・, async ({ page }) => {
+test("extra側の鶴町一丁目91号がUIに結合される", async ({ page }) => {
   const errors = attachErrorCollector(page);
   await waitForData(page);
   await selectRoute(
     page,
-    "鮓ｴ逕ｺ荳荳∫岼-3a81dc",
-    "鮓ｴ逕ｺ荳荳∫岼-3a81dc__91蜿ｷ",
-    "繝峨・繝蜑榊鴻莉｣蟠取婿髱｢"
+    "鶴町一丁目-3a81dc",
+    "鶴町一丁目-3a81dc__91号",
+    "ドーム前千代崎方面"
   );
 
-  await expect(page.locator("#dest-0")).toHaveText("繝峨・繝蜑榊鴻莉｣蟠・);
+  await expect(page.locator("#dest-0")).toHaveText("ドーム前千代崎");
   await hhmm(page.locator("#time-0"));
   await hhmm(page.locator("#time-1"));
   await hhmm(page.locator("#time-2"));
@@ -113,7 +113,7 @@ test("extra蛛ｴ縺ｮ鮓ｴ逕ｺ荳荳∫岼91蜿ｷ縺袈I縺ｫ邨仙粋�
   expectNoBrowserErrors(errors);
 });
 
-test("extra蛛ｴ縺ｮ陬懈ｭ｣繝・・繧ｿ縺恵ase繧医ｊ蜆ｪ蜈医＆繧後ｋ", async ({ page }) => {
+test("extra側の補正データがbaseより優先される", async ({ page }) => {
   const errors = attachErrorCollector(page);
   await waitForData(page);
 
@@ -121,15 +121,15 @@ test("extra蛛ｴ縺ｮ陬懈ｭ｣繝・・繧ｿ縺恵ase繧医ｊ蜆ｪ蜈医
     const entries = await fetch("data/timetable.json").then((response) => response.json());
     const route90 = entries.find(
       (entry) =>
-        entry.routeId === "鮓ｴ逕ｺ荳荳∫岼-3a81dc__90蜿ｷ" &&
-        entry.direction === "驥守伐髦ｪ逾槫燕譁ｹ髱｢" &&
-        entry.destination === "驥守伐髦ｪ逾槫燕"
+        entry.routeId === "鶴町一丁目-3a81dc__90号" &&
+        entry.direction === "野田阪神前方面" &&
+        entry.destination === "野田阪神前"
     );
     const route80 = entries.find(
       (entry) =>
-        entry.routeId === "鮓ｴ逕ｺ荳荳∫岼-3a81dc__80蜿ｷ" &&
-        entry.direction === "縺ゅ∋縺ｮ讖区婿髱｢" &&
-        entry.destination === "縺ゅ∋縺ｮ讖具ｼｻ螟ｩ邇句ｯｺ鬧・燕・ｽ"
+        entry.routeId === "鶴町一丁目-3a81dc__80号" &&
+        entry.direction === "あべの橋方面" &&
+        entry.destination === "あべの橋［天王寺駅前］"
     );
     return {
       route90Holiday: route90?.holiday ?? null,
@@ -144,7 +144,7 @@ test("extra蛛ｴ縺ｮ陬懈ｭ｣繝・・繧ｿ縺恵ase繧医ｊ蜆ｪ蜈医
   expectNoBrowserErrors(errors);
 });
 
-test("荳ｻ陦ｨ遉ｺ縺ｮ遘偵き繧ｦ繝ｳ繝医→24:07縺ｮ鄙梧律00:07陦ｨ遉ｺ繧剃ｸ｡遶九☆繧・, async ({ page }) => {
+test("主表示の秒カウントと24:07の翌日00:07表示を両立する", async ({ page }) => {
   const errors = attachErrorCollector(page);
   const fixedNow = new Date("2026-08-31T23:50:40+09:00").getTime();
   await page.addInitScript(({ now }) => {
@@ -163,40 +163,40 @@ test("荳ｻ陦ｨ遉ｺ縺ｮ遘偵き繧ｦ繝ｳ繝医→24:07縺ｮ鄙梧律
   await waitForData(page);
   await selectRoute(
     page,
-    "蟷ｸ逕ｺ荳荳∫岼-fe1e0f",
-    "蟷ｸ逕ｺ荳荳∫岼-fe1e0f__71蜿ｷ",
-    "鮓ｴ逕ｺ蝗帑ｸ∫岼譁ｹ髱｢"
+    "幸町一丁目-fe1e0f",
+    "幸町一丁目-fe1e0f__71号",
+    "鶴町四丁目方面"
   );
 
   await expect(page.locator("#time-0")).toHaveText("23:53");
   await expect(page.locator("#eta-0")).toHaveText("2");
   await expect(page.locator("#eta-0-seconds")).toHaveText("20");
   await expect(page.locator("#time-1")).toHaveText("00:07");
-  await expect(page.locator("#eta-1")).toHaveText("縺ゅ→ 16蛻・);
+  await expect(page.locator("#eta-1")).toHaveText("あと 16分");
   expectNoBrowserErrors(errors);
 });
 
-test("蜀崎ｪｭ縺ｿ霎ｼ縺ｿ蠕後・蛛懃蕗謇縺縺大ｾｩ蜈・＠縲∝捷謨ｰ繝ｻ譁ｹ髱｢縺ｯ譛ｪ驕ｸ謚槭↓謌ｻ繧・, async ({ page }) => {
+test("再読み込み後は停留所だけ復元し、号数・方面は未選択に戻る", async ({ page }) => {
   const errors = attachErrorCollector(page);
   await waitForData(page);
   await selectRoute(
     page,
-    "鮓ｴ逕ｺ荳荳∫岼-3a81dc",
-    "鮓ｴ逕ｺ荳荳∫岼-3a81dc__90蜿ｷ",
-    "驥守伐髦ｪ逾槫燕譁ｹ髱｢"
+    "鶴町一丁目-3a81dc",
+    "鶴町一丁目-3a81dc__90号",
+    "野田阪神前方面"
   );
 
-  await expect(page.locator("#dest-0")).toHaveText("驥守伐髦ｪ逾槫燕");
+  await expect(page.locator("#dest-0")).toHaveText("野田阪神前");
   await page.reload();
 
-  await expect(page.locator("#stop-select")).toHaveValue("鮓ｴ逕ｺ荳荳∫岼-3a81dc");
+  await expect(page.locator("#stop-select")).toHaveValue("鶴町一丁目-3a81dc");
   await expect(page.locator("#route-select")).toHaveValue("");
   await expect(page.locator("#direction-select")).toHaveValue("");
   await expect(page.locator("#overview-board")).toBeVisible();
   expectNoBrowserErrors(errors);
 });
 
-test("GPS謌仙粥譎ゅ・霑代＞鬆・0蛛懃蕗謇縺ｫ邨槭ｊ霎ｼ縺ｾ繧後ｋ", async ({ browser, baseURL }) => {
+test("GPS成功時は近い順10停留所に絞り込まれる", async ({ browser, baseURL }) => {
   const context = await browser.newContext({
     baseURL,
     permissions: ["geolocation"],
@@ -216,7 +216,7 @@ test("GPS謌仙粥譎ゅ・霑代＞鬆・0蛛懃蕗謇縺ｫ邨槭ｊ霎ｼ�
   await context.close();
 });
 
-test("GPS諡貞凄譎ゅ・蜈ｨ蛛懃蕗謇縺九ｉ謇句虚驕ｸ謚槭〒縺阪ｋ", async ({ browser, baseURL }) => {
+test("GPS拒否時は全停留所から手動選択できる", async ({ browser, baseURL }) => {
   const context = await browser.newContext({
     baseURL,
     permissions: [],
@@ -226,7 +226,7 @@ test("GPS諡貞凄譎ゅ・蜈ｨ蛛懃蕗謇縺九ｉ謇句虚驕ｸ謚槭〒
   const errors = attachErrorCollector(page);
   await page.goto("/");
 
-  await expect(page.locator("#status-message")).toContainText(/菴咲ｽｮ諠・ｱ|迴ｾ蝨ｨ蝨ｰ/);
+  await expect(page.locator("#status-message")).toContainText(/位置情報|現在地/);
   await expect(page.locator("#nearby-label")).toBeHidden();
   await expect(page.locator("#locate-btn")).toBeInViewport();
   const count = await page.locator("#stop-select option").count();
@@ -235,7 +235,7 @@ test("GPS諡貞凄譎ゅ・蜈ｨ蛛懃蕗謇縺九ｉ謇句虚驕ｸ謚槭〒
   await context.close();
 });
 
-test("Service Worker v31縺ｧ繧ｪ繝輔Λ繧､繝ｳ縺ｧ繧Ｆxtra蛛ｴ91蜿ｷ繧貞茜逕ｨ縺ｧ縺阪ｋ", async ({ context, page }) => {
+test("Service Worker v32でオフラインでもextra側91号を利用できる", async ({ context, page }) => {
   const errors = attachErrorCollector(page);
   await waitForData(page);
 
@@ -256,11 +256,11 @@ test("Service Worker v31縺ｧ繧ｪ繝輔Λ繧､繝ｳ縺ｧ繧Ｆxtra蛛ｴ91
   await expect(page.locator("#stop-select option").first()).toBeAttached();
   await selectRoute(
     page,
-    "鮓ｴ逕ｺ荳荳∫岼-3a81dc",
-    "鮓ｴ逕ｺ荳荳∫岼-3a81dc__91蜿ｷ",
-    "繝峨・繝蜑榊鴻莉｣蟠取婿髱｢"
+    "鶴町一丁目-3a81dc",
+    "鶴町一丁目-3a81dc__91号",
+    "ドーム前千代崎方面"
   );
-  await expect(page.locator("#dest-0")).toHaveText("繝峨・繝蜑榊鴻莉｣蟠・);
+  await expect(page.locator("#dest-0")).toHaveText("ドーム前千代崎");
   await hhmm(page.locator("#time-0"));
   await expect(page.locator("#eta-0-seconds")).toHaveText(/^\d{2}$/);
 
@@ -290,8 +290,8 @@ async function installPartial71Timetable(page, { weekday, verifiedCalendars }) {
     const entries = await response.json();
     const target = entries.find(
       (entry) =>
-        entry.routeId === "鮓ｴ逕ｺ荳荳∫岼-3a81dc__71蜿ｷ" &&
-        entry.direction === "縺ｪ繧薙・譁ｹ髱｢"
+        entry.routeId === "鶴町一丁目-3a81dc__71号" &&
+        entry.direction === "なんば方面"
     );
     if (!target) throw new Error("partial-calendar test target not found");
     target.weekday = weekday;
@@ -303,7 +303,7 @@ async function installPartial71Timetable(page, { weekday, verifiedCalendars }) {
   });
 }
 
-test("weekday縺縺膳erified縺ｧ繧ょｹｳ譌･荳ｭ縺ｯVerified萓ｿ繧定｡ｨ遉ｺ縺吶ｋ", async ({ page }) => {
+test("weekdayだけVerifiedでも平日中はVerified便を表示する", async ({ page }) => {
   const errors = attachErrorCollector(page);
   await freezeNow(page, "2026-09-01T10:00:00+09:00");
   await installPartial71Timetable(page, {
@@ -314,9 +314,9 @@ test("weekday縺縺膳erified縺ｧ繧ょｹｳ譌･荳ｭ縺ｯVerified萓�
   await waitForData(page);
   await selectRoute(
     page,
-    "鮓ｴ逕ｺ荳荳∫岼-3a81dc",
-    "鮓ｴ逕ｺ荳荳∫岼-3a81dc__71蜿ｷ",
-    "縺ｪ繧薙・譁ｹ髱｢"
+    "鶴町一丁目-3a81dc",
+    "鶴町一丁目-3a81dc__71号",
+    "なんば方面"
   );
 
   await expect(page.locator("#time-0")).toHaveText("10:05");
@@ -326,7 +326,7 @@ test("weekday縺縺膳erified縺ｧ繧ょｹｳ譌･荳ｭ縺ｯVerified萓�
   expectNoBrowserErrors(errors);
 });
 
-test("weekday縺縺膳erified縺ｪ繧画悴遒ｺ隱榊悄譖懊・貅門ｙ荳ｭ縺ｧ豁｢縺ｾ繧・, async ({ page }) => {
+test("weekdayだけVerifiedなら未確認土曜は準備中で止まる", async ({ page }) => {
   const errors = attachErrorCollector(page);
   await freezeNow(page, "2026-09-05T10:00:00+09:00");
   await installPartial71Timetable(page, {
@@ -337,9 +337,9 @@ test("weekday縺縺膳erified縺ｪ繧画悴遒ｺ隱榊悄譖懊・貅門ｙ
   await waitForData(page);
   await selectRoute(
     page,
-    "鮓ｴ逕ｺ荳荳∫岼-3a81dc",
-    "鮓ｴ逕ｺ荳荳∫岼-3a81dc__71蜿ｷ",
-    "縺ｪ繧薙・譁ｹ髱｢"
+    "鶴町一丁目-3a81dc",
+    "鶴町一丁目-3a81dc__71号",
+    "なんば方面"
   );
 
   await expect(page.locator("#next-bus")).toBeHidden();
@@ -347,7 +347,7 @@ test("weekday縺縺膳erified縺ｪ繧画悴遒ｺ隱榊悄譖懊・貅門ｙ
   expectNoBrowserErrors(errors);
 });
 
-test("驥第屆邨ゆｾｿ蠕後・譛ｪ遏･縺ｮ騾ｱ譛ｫ繧帝｣帙・縺励※譛域屆萓ｿ繧定｡ｨ遉ｺ縺励↑縺・, async ({ page }) => {
+test("金曜終便後は未知の週末を飛ばして月曜便を表示しない", async ({ page }) => {
   const errors = attachErrorCollector(page);
   await freezeNow(page, "2026-09-04T23:30:00+09:00");
   await installPartial71Timetable(page, {
@@ -358,9 +358,9 @@ test("驥第屆邨ゆｾｿ蠕後・譛ｪ遏･縺ｮ騾ｱ譛ｫ繧帝｣帙�
   await waitForData(page);
   await selectRoute(
     page,
-    "鮓ｴ逕ｺ荳荳∫岼-3a81dc",
-    "鮓ｴ逕ｺ荳荳∫岼-3a81dc__71蜿ｷ",
-    "縺ｪ繧薙・譁ｹ髱｢"
+    "鶴町一丁目-3a81dc",
+    "鶴町一丁目-3a81dc__71号",
+    "なんば方面"
   );
 
   await expect(page.locator("#next-bus")).toBeHidden();
@@ -368,7 +368,7 @@ test("驥第屆邨ゆｾｿ蠕後・譛ｪ遏･縺ｮ騾ｱ譛ｫ繧帝｣帙�
   expectNoBrowserErrors(errors);
 });
 
-test("runtime legacy compatibility: verifiedCalendars逵∫払縺ｮfixture entry縺ｯ蠕捺擂騾壹ｊ蜈ｨ譖懈律Verified謇ｱ縺・, async ({ page }) => {
+test("runtime legacy compatibility: verifiedCalendars省略のfixture entryは従来通り全曜日Verified扱い", async ({ page }) => {
   const errors = attachErrorCollector(page);
   await freezeNow(page, "2026-09-05T10:00:00+09:00");
   await installPartial71Timetable(page, {
@@ -380,7 +380,7 @@ test("runtime legacy compatibility: verifiedCalendars逵∫払縺ｮfixture entr
   await waitForData(page);
 
   const verification = await page.evaluate(() => {
-    const direction = BusDataSource.getDirectionsForRoute("鮓ｴ逕ｺ荳荳∫岼-3a81dc__71蜿ｷ")[0];
+    const direction = BusDataSource.getDirectionsForRoute("鶴町一丁目-3a81dc__71号")[0];
     const internal = BusDataSource._timetableByDirectionId.get(direction.id);
     return internal ? [...internal.verifiedCalendars] : [];
   });
@@ -388,43 +388,43 @@ test("runtime legacy compatibility: verifiedCalendars逵∫払縺ｮfixture entr
   expectNoBrowserErrors(errors);
 });
 
-test("鮓ｴ逕ｺ莠御ｸ∫岼80蜿ｷ縺ゅ∋縺ｮ讖区婿髱｢縺ｯ蟷ｳ譌･繝ｻ蝨滓屆縺ｧ蛻ｩ逕ｨ蜿ｯ閭ｽ縲∽ｼ第律縺ｯ貅門ｙ荳ｭ縺ｸfail-closed縺吶ｋ", async ({ page }) => {
+test("鶴町二丁目80号あべの橋方面は平日・土曜で利用可能、休日は準備中へfail-closedする", async ({ page }) => {
   const errors = attachErrorCollector(page);
 
-  // 1. 蟷ｳ譌･ (2026-09-01 轣ｫ譖・10:00)
+  // 1. 平日 (2026-09-01 火曜 10:00)
   await freezeNow(page, "2026-09-01T10:00:00+09:00");
   await waitForData(page);
   await selectRoute(
     page,
-    "鮓ｴ逕ｺ莠御ｸ∫岼-89573b",
-    "鮓ｴ逕ｺ莠御ｸ∫岼-89573b__80蜿ｷ",
-    "縺ゅ∋縺ｮ讖区婿髱｢"
+    "鶴町二丁目-89573b",
+    "鶴町二丁目-89573b__80号",
+    "あべの橋方面"
   );
   await expect(page.locator("#time-0")).toHaveText("10:12");
   await expect(page.locator("#pending-message")).toBeHidden();
 
-  // 2. 蝨滓屆 (2026-09-05 蝨滓屆 10:00)
+  // 2. 土曜 (2026-09-05 土曜 10:00)
   await page.reload();
   await freezeNow(page, "2026-09-05T10:00:00+09:00");
   await waitForData(page);
   await selectRoute(
     page,
-    "鮓ｴ逕ｺ莠御ｸ∫岼-89573b",
-    "鮓ｴ逕ｺ莠御ｸ∫岼-89573b__80蜿ｷ",
-    "縺ゅ∋縺ｮ讖区婿髱｢"
+    "鶴町二丁目-89573b",
+    "鶴町二丁目-89573b__80号",
+    "あべの橋方面"
   );
   await expect(page.locator("#time-0")).toHaveText("10:22");
   await expect(page.locator("#pending-message")).toBeHidden();
 
-  // 3. 莨第律 (2026-09-06 譌･譖・10:00) 窶・驛ｨ蛻・凾蛻ｻ縺後≠縺｣縺ｦ繧Ｇail-closed縺玲ｺ門ｙ荳ｭ
+  // 3. 休日 (2026-09-06 日曜 10:00) — 部分時刻があってもfail-closedし準備中
   await page.reload();
   await freezeNow(page, "2026-09-06T10:00:00+09:00");
   await waitForData(page);
   await selectRoute(
     page,
-    "鮓ｴ逕ｺ莠御ｸ∫岼-89573b",
-    "鮓ｴ逕ｺ莠御ｸ∫岼-89573b__80蜿ｷ",
-    "縺ゅ∋縺ｮ讖区婿髱｢"
+    "鶴町二丁目-89573b",
+    "鶴町二丁目-89573b__80号",
+    "あべの橋方面"
   );
   await expect(page.locator("#next-bus")).toBeHidden();
   await expect(page.locator("#pending-message")).toBeVisible();
