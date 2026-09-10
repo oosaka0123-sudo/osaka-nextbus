@@ -10,8 +10,8 @@
 ## 1. 基本原則: 1 Task = 1 Active Owner
 
 - 各Issue（Task）には、その時点で作業中のOwnerが常に0または1体だけ存在します。
-- Ownerは`status:doing`ラベルとIssueコメントで明示します。
-- 同一Issueに複数エージェントが同時に`status:doing`で着手しません。
+- Active状態は`status:doing`、Ownerは利用可能な`agent:*`ラベルとIssueコメントで明示します。該当するagentラベルがないPM fallbackではIssueコメントを正とします。
+- 同一Issueに複数エージェントをActive Ownerとして同時割当しません。
 - Ownerを引き継ぐ場合は、旧Ownerの状態（進捗・失敗理由・次の判断）をIssueへ残してから`status:doing`を再割当てします。
 - GitHub（Issue/PR/Actions/Commit）が唯一の正本です。チャット履歴上の口頭引き継ぎだけでOwnerを移譲しません。
 
