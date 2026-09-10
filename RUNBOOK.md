@@ -390,3 +390,9 @@ BLOCKED
 だけを起点に再開する。
 
 GitHubが長期記憶、LLMチャットは交換可能な作業セッションとして扱う。
+
+## 16. Continuous AI運用時の参照
+
+restart / agent failure / reviewer quota / no active task の継続手順は
+`docs/CONTINUOUS-AI-PROTOCOL.md` を参照する。詳細はここへ重複記載しない。
+本文書は `osaka-nextbus` 内だけで管理し、`ai-master` 等の別リポジトリへは複製しない。
