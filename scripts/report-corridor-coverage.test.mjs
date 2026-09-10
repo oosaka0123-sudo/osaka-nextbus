@@ -251,3 +251,27 @@ test("Tsumori-2chome 80号 production data reports weekday/saturday verified, ho
     holiday: "missing",
   });
 });
+
+test("Sho-un-bashi 71 production data keeps all 6 official calendars", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const { resolve } = await import("node:path");
+  const root = resolve(import.meta.dirname, "..");
+  const load = async (path) => JSON.parse(await readFile(resolve(root, path), "utf8"));
+  const [stops, routes, base, extra] = await Promise.all([
+    load("data/stops.json"), load("data/routes.json"), load("data/timetable.json"), load("data/timetable-extra.json"),
+  ]);
+  const routeId = "昌運橋-b5ace8__71号";
+  const rows = extra.filter((entry) => entry.routeId === routeId);
+  assert.equal(rows.length, 2);
+  const namba = rows.find((entry) => entry.direction === "なんば方面");
+  const tsuru = rows.find((entry) => entry.direction === "鶴町四丁目方面");
+  assert.deepEqual([namba.weekday.length, namba.saturday.length, namba.holiday.length], [119, 142, 133]);
+  assert.deepEqual([tsuru.weekday.length, tsuru.saturday.length, tsuru.holiday.length], [125, 143, 136]);
+  assert.deepEqual([namba.weekday[0], namba.saturday[0], namba.holiday[0]], ["05:19", "05:30", "05:38"]);
+  assert.deepEqual([tsuru.weekday[0], tsuru.saturday[0], tsuru.holiday[0]], ["06:28", "06:38", "06:46"]);
+  assert.deepEqual(tsuru.weekday.slice(-3), ["24:07", "24:18", "24:32"]);
+  const report = buildCoverageReport({ stops, routes, base, extra }, ["昌運橋"]);
+  const route = report.stops[0].routes.find((entry) => entry.label === "71号");
+  assert.equal(route.covered, true);
+  assert.deepEqual(route.calendarVerification, { weekday: "verified", saturday: "verified", holiday: "verified" });
+});

@@ -235,7 +235,7 @@ test("GPS拒否時は全停留所から手動選択できる", async ({ browser,
   await context.close();
 });
 
-test("Service Worker v36でオフラインでもextra側91号を利用できる", async ({ context, page }) => {
+test("Service Worker v37でオフラインでもextra側91号を利用できる", async ({ context, page }) => {
   const errors = attachErrorCollector(page);
   await waitForData(page);
 
@@ -249,7 +249,7 @@ test("Service Worker v36でオフラインでもextra側91号を利用できる"
   await expect(page.locator("#stop-select option").first()).toBeAttached();
 
   const cacheNames = await page.evaluate(() => caches.keys());
-  expect(cacheNames).toContain("osaka-nextbus-v36");
+  expect(cacheNames).toContain("osaka-nextbus-v37");
 
   await context.setOffline(true);
   await page.reload({ waitUntil: "domcontentloaded" });
@@ -428,5 +428,29 @@ test("鶴町二丁目80号あべの橋方面は平日・土曜で利用可能、
   );
   await expect(page.locator("#next-bus")).toBeHidden();
   await expect(page.locator("#pending-message")).toBeVisible();
+  expectNoBrowserErrors(errors);
+});
+
+test("昌運橋71号なんば方面は公式平日時刻をUI表示する", async ({ page }) => {
+  const errors = attachErrorCollector(page);
+  await freezeNow(page, "2026-09-08T07:00:00+09:00");
+  await waitForData(page);
+  await selectRoute(page, "昌運橋-b5ace8", "昌運橋-b5ace8__71号", "なんば方面");
+  await expect(page.locator("#dest-0")).toHaveText("なんば");
+  await expect(page.locator("#time-0")).toHaveText("07:07");
+  await expect(page.locator("#time-1")).toHaveText("07:14");
+  await expect(page.locator("#time-2")).toHaveText("07:20");
+  expectNoBrowserErrors(errors);
+});
+
+test("昌運橋71号鶴町四丁目方面は公式休日時刻をUI表示する", async ({ page }) => {
+  const errors = attachErrorCollector(page);
+  await freezeNow(page, "2026-09-13T07:10:00+09:00");
+  await waitForData(page);
+  await selectRoute(page, "昌運橋-b5ace8", "昌運橋-b5ace8__71号", "鶴町四丁目方面");
+  await expect(page.locator("#dest-0")).toHaveText("鶴町四丁目");
+  await expect(page.locator("#time-0")).toHaveText("07:25");
+  await expect(page.locator("#time-1")).toHaveText("07:40");
+  await expect(page.locator("#time-2")).toHaveText("07:56");
   expectNoBrowserErrors(errors);
 });
