@@ -10,10 +10,10 @@ data/
 ├── stops.json            停留所 992件
 ├── routes.json           停留所×系統 1,915件
 ├── timetable.json        既存の時刻表 8系統×方面
-└── timetable-extra.json  追加・補正時刻表 33エントリ（上書き補正1件含む）
+└── timetable-extra.json  追加・補正時刻表 35エントリ（上書き補正1件含む）
 ```
 
-アプリ上では `js/timetable-loader.js` が2つの時刻表JSONを結合し、同一キーのextraを優先するため、2026-09-11時点で **合計40系統×方面**として扱われます。
+アプリ上では `js/timetable-loader.js` が2つの時刻表JSONを結合し、同一キーのextraを優先するため、2026-09-11時点で **合計42系統×方面**として扱われます。
 
 ## stops.json
 
@@ -96,7 +96,7 @@ P11には行き先・方面が無いため、`routes.json` は停留所と系統
 
 ## 現在の収録範囲
 
-2026-09-11時点の結合後収録数は **40系統×方面** です。`timetable.json` は8エントリ、`timetable-extra.json` は33エントリで、そのうち1エントリがbaseを意図的に上書きするため、結合後は40になります。
+2026-09-11時点の結合後収録数は **42系統×方面** です。`timetable.json` は8エントリ、`timetable-extra.json` は35エントリで、そのうち1エントリがbaseを意図的に上書きするため、結合後は40になります。
 
 個別の停留所・系統・方面・行先とEvidence注記は `metadata.json` のcoverageを正本とします。このREADMEに全件一覧を複製せず、収録追加時の二重更新によるドリフトを避けます。
 

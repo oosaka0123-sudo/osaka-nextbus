@@ -198,6 +198,17 @@
       "lang": "0",
       "observedAt": "2026-09-08",
       "evidenceNote": "公式Bus-Vision公開ページで大正区役所前の鶴町四丁目向き共通行先グループを確認。Issue #147で各便detail URLのlineCd=71のみ抽出し、平日・土曜・休日の全71号時刻を検証。深夜00時台は24時台へ正規化。"
+    },
+    {
+      "stopName": "鶴町四丁目",
+      "directionNote": "市内向き（なんば方面）",
+      "sourceUrl": "https://oc.bus-vision.jp/osakacitybus/view/diagram.html?stopCd=812&poleCd=80&strLineList=71-1-1_87-1-1&lang=0",
+      "stopCd": "812",
+      "poleCd": "80",
+      "strLineList": "71-1-1_87-1-1",
+      "lang": "0",
+      "observedAt": "2026-09-11",
+      "evidenceNote": "公式Bus-Vision公開候補検索で鶴町四丁目=stopCd=812を確認し、時刻表検索フォーム通常遷移でpoleCd=80 / 71-1-1_87-1-1を確認。Issue #175で71/87各detailのなんば行き・updownCd=1と3カレンダー全時刻をPM実検証。"
     }
   ]
 }

@@ -10,7 +10,7 @@
 - 停留所×系統: **1,915件**
 - 基礎データ: 国土数値情報 P11 2022年度版（大阪シティバス）
 - 時刻表: 現地掲示写真等を目視確認して手動整備
-- 収録済み: **40系統×方面**
+- 収録済み: **42系統×方面**
 - 未収録系統は架空データを作らず「🚧 時刻表データ準備中」と表示
 - GitHub Actionsでデータ・JavaScript・Chromiumブラウザ動作をpush/PR時に自動検証
 
@@ -54,7 +54,7 @@ data/
 ├── stops.json            停留所
 ├── routes.json           停留所×系統
 ├── timetable.json        基本時刻表（8エントリ）
-└── timetable-extra.json  追加・補正時刻表（33エントリ、うち上書き補正1）
+└── timetable-extra.json  追加・補正時刻表（35エントリ、うち上書き補正1）
 ```
 
 `js/timetable-loader.js` が `timetable.json` と `timetable-extra.json` をブラウザ側で結合します。
@@ -190,7 +190,7 @@ Playwright（Chromium）で、次を含む実ブラウザ回帰を自動テス�
 - `localStorage` 復元
 - GPS成功・拒否時の挙動
 - Service Workerのオフライン動作と `sw.js` のキャッシュ版整合
-- なんば71号・87号の平日 / 土曜 / 休日データ件数、3曜日verified、代表時刻のUI表示
+- なんば／鶴町四丁目の71号・87号について平日 / 土曜 / 休日データ件数、3曜日verified、代表時刻のUI表示
 
 各テストでは可能な範囲で `pageerror` / `console.error` も監視します。
 

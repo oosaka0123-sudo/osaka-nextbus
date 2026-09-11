@@ -275,3 +275,29 @@ test("Sho-un-bashi 71 production data keeps all 6 official calendars", async () 
   assert.equal(route.covered, true);
   assert.deepEqual(route.calendarVerification, { weekday: "verified", saturday: "verified", holiday: "verified" });
 });
+
+
+test("Tsurumachi-4 71/87 production data keeps all official calendars", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const { resolve } = await import("node:path");
+  const root = resolve(import.meta.dirname, "..");
+  const load = async (path) => JSON.parse(await readFile(resolve(root, path), "utf8"));
+  const [stops, routes, base, extra] = await Promise.all([
+    load("data/stops.json"), load("data/routes.json"), load("data/timetable.json"), load("data/timetable-extra.json"),
+  ]);
+  const byId = Object.fromEntries(extra.filter((x) => x.routeId.startsWith("鶴町四丁目-41063c__")).map((x) => [x.routeId, x]));
+  const r71 = byId["鶴町四丁目-41063c__71号"];
+  const r87 = byId["鶴町四丁目-41063c__87号"];
+  assert.deepEqual([r71.weekday.length, r71.saturday.length, r71.holiday.length], [119, 142, 133]);
+  assert.deepEqual([r87.weekday.length, r87.saturday.length, r87.holiday.length], [37, 33, 27]);
+  assert.deepEqual([r71.weekday[0], r71.saturday[0], r71.holiday[0]], ["05:15", "05:26", "05:34"]);
+  assert.deepEqual([r87.weekday[0], r87.saturday[0], r87.holiday[0]], ["05:20", "06:10", "07:13"]);
+  assert.deepEqual(r71.verifiedCalendars, ["weekday", "saturday", "holiday"]);
+  assert.deepEqual(r87.verifiedCalendars, ["weekday", "saturday", "holiday"]);
+  const report = buildCoverageReport({ stops, routes, base, extra }, ["鶴町四丁目"]);
+  for (const label of ["71号", "87号"]) {
+    const route = report.stops[0].routes.find((x) => x.label === label);
+    assert.equal(route.covered, true);
+    assert.deepEqual(route.calendarVerification, { weekday: "verified", saturday: "verified", holiday: "verified" });
+  }
+});

@@ -258,7 +258,7 @@ Fail closed:
 ## 11. PWA / Service Worker
 
 - Service Workerはnetwork-first。
-- `CACHE_VERSION` の正本は `sw.js`。文書内の版番号は参考スナップショットとし、変更判断時は必ず `sw.js` の実値を確認する（2026-09-11時点: v37）。
+- `CACHE_VERSION` の正本は `sw.js`。文書内の版番号は参考スナップショットとし、変更判断時は必ず `sw.js` の実値を確認する。
 - `index.html` / JS / CSS / 時刻表データ等のPWA配信物を変更し、旧キャッシュ残存が問題になり得る場合は`CACHE_VERSION`を上げる。
 - README / AGENTS / DECISIONS / RUNBOOK / 検証スクリプトのみの変更では無意味に上げない。
 
