@@ -4,7 +4,7 @@
 
 **目的:** GPSで近い停留所を表示し、停留所 → 系統 → 方面を選ぶと、次の3便を「あと○分」で確認できます。
 
-## 現在の状態（2026-09-07）
+## 現在の状態（2026-09-11）
 
 - 停留所: **992件**
 - 停留所×系統: **1,915件**
@@ -54,7 +54,7 @@ data/
 ├── stops.json            停留所
 ├── routes.json           停留所×系統
 ├── timetable.json        基本時刻表（8エントリ）
-└── timetable-extra.json  追加・補正時刻表（追加6 + 上書き補正1）
+└── timetable-extra.json  追加・補正時刻表（33エントリ、うち上書き補正1）
 ```
 
 `js/timetable-loader.js` が `timetable.json` と `timetable-extra.json` をブラウザ側で結合します。
@@ -189,7 +189,7 @@ Playwright（Chromium）で、次を含む実ブラウザ回帰を自動テス�
 - 24時台のservice-day表示
 - `localStorage` 復元
 - GPS成功・拒否時の挙動
-- Service Worker **v31** のオフライン動作
+- Service Workerのオフライン動作と `sw.js` のキャッシュ版整合
 - なんば71号・87号の平日 / 土曜 / 休日データ件数、3曜日verified、代表時刻のUI表示
 
 各テストでは可能な範囲で `pageerror` / `console.error` も監視します。
@@ -198,7 +198,7 @@ GitHub Actionsの `.github/workflows/validate-data.yml` がpush/PR時に自動�
 
 ## Service Worker
 
-現在のキャッシュ版は **v31** です。
+現在のキャッシュ版は **v37** です。運用上の正本は `sw.js` の `CACHE_VERSION` とし、文書の固定値より実装値を優先します。
 
 オンライン時はネットワークを優先し、成功したレスポンスをキャッシュします。オフライン時のみキャッシュへフォールバックします。
 
