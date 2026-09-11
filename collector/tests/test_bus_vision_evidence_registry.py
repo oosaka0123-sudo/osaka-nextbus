@@ -18,12 +18,17 @@ def registry_document():
 class EvidenceRegistryTest(unittest.TestCase):
     def test_committed_registry_loads_verified_targets(self):
         entries = load_evidence_registry()
-        self.assertEqual(len(entries), 18)
+        self.assertEqual(len(entries), 19)
 
         tsurumachi3 = next(item for item in entries if item.stop_name == "鶴町三丁目")
         self.assertEqual(tsurumachi3.stop_cd, "811")
         self.assertEqual(tsurumachi3.pole_cd, "80")
         self.assertEqual(tsurumachi3.str_line_list, "71-1-1_87-1-1")
+
+        tsurumachi4 = next(item for item in entries if item.stop_name == "鶴町四丁目")
+        self.assertEqual(tsurumachi4.stop_cd, "812")
+        self.assertEqual(tsurumachi4.pole_cd, "80")
+        self.assertEqual(tsurumachi4.str_line_list, "71-1-1_87-1-1")
 
         namba = next(item for item in entries if item.stop_name == "なんば")
         self.assertEqual(namba.stop_cd, "360")

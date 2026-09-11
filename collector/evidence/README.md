@@ -13,7 +13,7 @@
 - `sourceUrl` は `https://oc.bus-vision.jp/osakacitybus/view/diagram.html` に限定する。
 - `evidence_registry.py` が宣言値とURL queryを照合し、不一致・欠損・重複をfail closedする。
 
-2026-09-03時点の登録は **2件** です。
+現在の登録件数は `stop_timetables.json` を正とし、このREADMEでは件数を二重管理しません。
 
 ### 鶴町三丁目・市内向き
 
@@ -24,6 +24,16 @@ strLineList=71-1-1_87-1-1
 ```
 
 公開停留所時刻表の07:35と、87号なんば行き便詳細の鶴町三丁目07:35が一致することを Issue #37 / PR #38 で回帰確認しています。
+
+### 鶴町四丁目・市内向き
+
+```text
+stopCd=812
+poleCd=80
+strLineList=71-1-1_87-1-1
+```
+
+公式Bus-Vision公開候補検索と時刻表検索フォームの通常遷移で Issue #175 にて確認。71号・87号の便詳細はいずれも `updownCd=1` / なんば行きを確認し、平日・土曜・休日の全時刻をroute別に検証しています。
 
 ### なんば・【西】②のりば・鶴町四丁目方面
 
