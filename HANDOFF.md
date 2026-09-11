@@ -24,8 +24,8 @@ default branch 上の内容だけを復帰用途に使います。
 
 ## 現在のbus appキュー
 
-- active `status:doing` のバスアプリIssue: #177（このHANDOFF同期のみ）。
-- open PR: このHANDOFF更新PRのみ（merge後は0件）。
+- active `status:doing` のバスアプリIssue: なし（このHANDOFF更新PRがdefaultへ入った後の状態）。
+- open PR: なし（このHANDOFF更新PRがdefaultへ入った後の状態）。
 - Issue #155 は非アプリの事業相談Issue。openのまま保持するが、バスアプリの自動キューとして実行しない。
 - 次のバスアプリ要件が未定義なら推測で新機能を作らない。ユーザー確定要件が来たら重複確認後に最小Issue化する。
 
