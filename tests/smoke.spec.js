@@ -235,7 +235,7 @@ test("GPS拒否時は全停留所から手動選択できる", async ({ browser,
   await context.close();
 });
 
-test("Service Worker v38でオフラインでもextra側91号を利用できる", async ({ context, page }) => {
+test("Service Worker v39でオフラインでもextra側91号を利用できる", async ({ context, page }) => {
   const errors = attachErrorCollector(page);
   await waitForData(page);
 
@@ -249,7 +249,7 @@ test("Service Worker v38でオフラインでもextra側91号を利用できる"
   await expect(page.locator("#stop-select option").first()).toBeAttached();
 
   const cacheNames = await page.evaluate(() => caches.keys());
-  expect(cacheNames).toContain("osaka-nextbus-v38");
+  expect(cacheNames).toContain("osaka-nextbus-v39");
 
   await context.setOffline(true);
   await page.reload({ waitUntil: "domcontentloaded" });
@@ -388,7 +388,7 @@ test("runtime legacy compatibility: verifiedCalendars省略のfixture entryは�
   expectNoBrowserErrors(errors);
 });
 
-test("鶴町二丁目80号あべの橋方面は平日・土曜で利用可能、休日は準備中へfail-closedする", async ({ page }) => {
+test("鶴町二丁目80号あべの橋方面は平日・土曜・休日で利用可能", async ({ page }) => {
   const errors = attachErrorCollector(page);
 
   // 1. 平日 (2026-09-01 火曜 10:00)
@@ -416,9 +416,9 @@ test("鶴町二丁目80号あべの橋方面は平日・土曜で利用可能、
   await expect(page.locator("#time-0")).toHaveText("10:22");
   await expect(page.locator("#pending-message")).toBeHidden();
 
-  // 3. 休日 (2026-09-06 日曜 10:00) — 部分時刻があってもfail-closedし準備中
+  // 3. 休日 (2026-09-13 日曜 10:00) — 公式Bus-Vision完全Evidenceの休日ダイヤを表示
   await page.reload();
-  await freezeNow(page, "2026-09-06T10:00:00+09:00");
+  await freezeNow(page, "2026-09-13T10:00:00+09:00");
   await waitForData(page);
   await selectRoute(
     page,
@@ -426,8 +426,10 @@ test("鶴町二丁目80号あべの橋方面は平日・土曜で利用可能、
     "鶴町二丁目-89573b__80号",
     "あべの橋方面"
   );
-  await expect(page.locator("#next-bus")).toBeHidden();
-  await expect(page.locator("#pending-message")).toBeVisible();
+  await expect(page.locator("#time-0")).toHaveText("10:13");
+  await expect(page.locator("#time-1")).toHaveText("10:39");
+  await expect(page.locator("#time-2")).toHaveText("11:01");
+  await expect(page.locator("#pending-message")).toBeHidden();
   expectNoBrowserErrors(errors);
 });
 

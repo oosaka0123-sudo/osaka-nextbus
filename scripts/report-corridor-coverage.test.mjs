@@ -228,7 +228,7 @@ test("Namba 71/87 production data reports all 3 calendars verified", async () =>
   }
 });
 
-test("Tsumori-2chome 80号 production data reports weekday/saturday verified, holiday missing", async () => {
+test("Tsumori-2chome 80号 production data reports all 3 calendars verified", async () => {
   const { readFile } = await import("node:fs/promises");
   const { resolve } = await import("node:path");
 
@@ -248,7 +248,7 @@ test("Tsumori-2chome 80号 production data reports weekday/saturday verified, ho
   assert.deepEqual(route.calendarVerification, {
     weekday: "verified",
     saturday: "verified",
-    holiday: "missing",
+    holiday: "verified",
   });
 });
 
