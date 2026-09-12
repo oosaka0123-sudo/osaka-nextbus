@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>改善・お問い合わせ | 次バス大阪</title>
+<meta name="description" content="次バス大阪への改善要望・不具合報告・その他のお問い合わせ" />
+<meta name="theme-color" content="#0b57d0" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div class="app feedback-app">
+  <header class="app-header feedback-header">
+    <button id="feedback-back" class="back-btn" type="button" aria-label="前の画面に戻る">←</button>
+    <h1>改善・お問い合わせ</h1>
+  </header>
+
+  <main class="feedback-card">
+    <p class="feedback-intro">アプリの改善要望や不具合を送れます。入力内容はこの端末に下書き保存されます。</p>
+
+    <label class="feedback-field">
+      <span>区分</span>
+      <select id="feedback-category">
+        <option value="改善要望">改善要望</option>
+        <option value="不具合報告">不具合報告</option>
+        <option value="その他">その他</option>
+      </select>
+    </label>
+
+    <label class="feedback-field">
+      <span>内容 <small>必須</small></span>
+      <textarea id="feedback-message" rows="8" maxlength="2000" placeholder="例：〇〇停留所の表示をもっと見やすくしてほしい"></textarea>
+    </label>
+
+    <div class="feedback-actions">
+      <a id="feedback-send" class="feedback-send" aria-disabled="true" target="_blank" rel="noopener">GitHub Issuesで送る</a>
+      <button id="feedback-copy" class="feedback-secondary" type="button">内容をコピー</button>
+      <button id="feedback-clear" class="feedback-clear" type="button">下書きを消す</button>
+    </div>
+
+    <p id="feedback-status" class="feedback-status" role="status" aria-live="polite"></p>
+
+    <section class="feedback-note" aria-label="送信について">
+      <h2>送信について</h2>
+      <p>送信先は「次バス大阪」のGitHub Issuesです。GitHubアカウントが必要で、投稿内容は公開されます。</p>
+      <p>現在地・GPS・選択中の停留所や系統などは自動送信しません。氏名・電話番号・住所などの個人情報は入力しないでください。</p>
+    </section>
+  </main>
+</div>
+
+<script src="js/feedback.js"></script>
+</body>
+</html>
