@@ -408,3 +408,241 @@ body {
     font-size: 3rem;
   }
 }
+/* App menu */
+body.menu-open {
+  overflow: hidden;
+}
+
+.menu-btn,
+.back-btn {
+  position: absolute;
+  left: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  color: var(--color-text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 1.45rem;
+  cursor: pointer;
+}
+
+.menu-btn:focus-visible,
+.back-btn:focus-visible,
+.menu-close:focus-visible,
+.app-menu-link:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(0, 0, 0, 0.58);
+}
+
+.menu-backdrop[hidden],
+.app-menu[hidden] {
+  display: none;
+}
+
+.app-menu {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 50;
+  width: min(82vw, 320px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: calc(var(--safe-top) + 18px) 18px calc(var(--safe-bottom) + 20px);
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  box-shadow: 12px 0 30px rgba(0, 0, 0, 0.35);
+}
+
+.app-menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  margin-bottom: 8px;
+}
+
+.app-menu-header strong {
+  font-size: 1rem;
+}
+
+.menu-close {
+  width: 44px;
+  height: 44px;
+  color: var(--color-text);
+  background: transparent;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.7rem;
+  cursor: pointer;
+}
+
+.app-menu-link {
+  display: flex;
+  align-items: center;
+  min-height: 52px;
+  padding: 12px 14px;
+  color: var(--color-text);
+  text-decoration: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.app-menu-link:active {
+  background: #1a2740;
+}
+
+.app-menu-link-feedback {
+  margin-top: auto;
+  border-top: 1px solid var(--color-border);
+  border-radius: 0;
+}
+
+/* Feedback page */
+.feedback-app {
+  padding-bottom: calc(var(--safe-bottom) + 24px);
+}
+
+.feedback-header {
+  min-height: 44px;
+}
+
+.feedback-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+}
+
+.feedback-intro,
+.feedback-note p {
+  margin: 0;
+  color: var(--color-text-dim);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.feedback-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.feedback-field small {
+  color: var(--color-text-dim);
+  font-weight: 500;
+}
+
+.feedback-field select,
+.feedback-field textarea {
+  width: 100%;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 12px;
+  font: inherit;
+  font-weight: 500;
+}
+
+.feedback-field textarea {
+  min-height: 180px;
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.feedback-field select:focus,
+.feedback-field textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(76, 141, 255, 0.35);
+}
+
+.feedback-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.feedback-send,
+.feedback-secondary,
+.feedback-clear {
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font: inherit;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+}
+
+.feedback-send {
+  color: #081327;
+  background: var(--color-primary);
+  text-decoration: none;
+  border: 1px solid var(--color-primary);
+}
+
+.feedback-send.is-disabled,
+.feedback-send[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.feedback-secondary {
+  color: var(--color-text);
+  background: transparent;
+  border: 1px solid var(--color-border);
+}
+
+.feedback-clear {
+  min-height: 44px;
+  color: var(--color-text-dim);
+  background: transparent;
+  border: none;
+  font-size: 0.9rem;
+}
+
+.feedback-status {
+  min-height: 1.4em;
+  margin: -4px 0 0;
+  color: var(--color-primary);
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.feedback-note {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border);
+}
+
+.feedback-note h2 {
+  margin: 0;
+  font-size: 0.9rem;
+}

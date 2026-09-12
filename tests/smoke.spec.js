@@ -235,7 +235,7 @@ test("GPS拒否時は全停留所から手動選択できる", async ({ browser,
   await context.close();
 });
 
-test("Service Worker v39でオフラインでもextra側91号を利用できる", async ({ context, page }) => {
+test("Service Worker v40でオフラインでもextra側91号を利用できる", async ({ context, page }) => {
   const errors = attachErrorCollector(page);
   await waitForData(page);
 
@@ -249,7 +249,7 @@ test("Service Worker v39でオフラインでもextra側91号を利用できる"
   await expect(page.locator("#stop-select option").first()).toBeAttached();
 
   const cacheNames = await page.evaluate(() => caches.keys());
-  expect(cacheNames).toContain("osaka-nextbus-v39");
+  expect(cacheNames).toContain("osaka-nextbus-v40");
 
   await context.setOffline(true);
   await page.reload({ waitUntil: "domcontentloaded" });
