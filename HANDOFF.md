@@ -1,4 +1,4 @@
-# HANDOFF — 2026-09-12 initial MVP complete milestone
+# HANDOFF — 2026-09-12 next phase / Issue #179 active
 
 このファイルは節目だけで更新する一時引き継ぎです。動的な正本は GitHub Issue / PR / Actions / Commit / Deploy です。
 default branch 上の内容だけを復帰用途に使います。
@@ -24,15 +24,20 @@ default branch 上の内容だけを復帰用途に使います。
 
 ## 現在のbus appキュー
 
-- active `status:doing` のバスアプリIssue: なし（このHANDOFF更新PRがdefaultへ入った後の状態）。
-- open PR: なし（このHANDOFF更新PRがdefaultへ入った後の状態）。
+- active `status:doing` のバスアプリIssue: **#179**。
+- #179: 鶴町二丁目80号・あべの橋方面のholiday完全時刻表Evidenceを公式Bus-Vision公開画面で確定する。
+- weekday / saturday はverified production済み。holidayは10:39までの部分Evidence履歴のみで、productionは `[]` / `verifiedCalendars=["weekday","saturday"]` のfail-closedを維持。
+- 公式50音検索画面までは通常ブラウザで確認済み。ただし現在のBrowser Connectorではクリック/入力操作がなく、鶴町二丁目のstopCd / poleCd / strLineListは未確定。履歴アクセス権限もOFF。
+- **IDや時刻を推測しない。AI回答だけでproductionへ入れない。** 公式URLを発見できたら通常ブラウザで再確認し、holiday全便Evidence確定後に別implementation Issue/branchで反映する。
+- Issue #180 はこのHANDOFF同期専用。PR merge後はcloseされ、次回再開対象は #179。
 - Issue #155 は非アプリの事業相談Issue。openのまま保持するが、バスアプリの自動キューとして実行しない。
-- 次のバスアプリ要件が未定義なら推測で新機能を作らない。ユーザー確定要件が来たら重複確認後に最小Issue化する。
 
 ## 再開手順
 
 1. `AGENTS.md` → `DECISIONS.md` → `RUNBOOK.md` → `docs/CONTINUOUS-AI-PROTOCOL.md` → `HANDOFF.md`。
-2. open `status:doing` Issue、open PR、latest Actions、default branch head を確認する。
-3. 複数候補があれば最も進んだvalid taskを優先し、1 Task = 1 Active Ownerを守る。
-4. Gemini / Claude / Jules / reviewerが利用不能でも、protocolのfallbackへ切り替えて安全な作業を止めない。
-5. Secrets / Credentials / IAM / Billing / force-push / 破壊的不可逆操作と既存risk:highはHuman Gateを維持する。
+2. Issue #179を開き、最新コメント・Evidence・open PR・latest Actions・default branch headを確認する。
+3. 鶴町二丁目80号の公式Bus-Vision URL/識別子を、推測せず公開画面から確定する。
+4. holiday全便Evidenceを確定するまではproductionデータを変更しない。
+5. Evidence確定後だけ、別implementation Issue/branchでholiday配列・metadata・tests・必要ならSW versionを更新する。
+6. Gemini / Claude / Jules / reviewerが利用不能でも、protocolのfallbackへ切り替えて安全な作業を止めない。
+7. Secrets / Credentials / IAM / Billing / force-push / 破壊的不可逆操作と既存risk:highはHuman Gateを維持する。
