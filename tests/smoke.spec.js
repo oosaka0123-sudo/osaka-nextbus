@@ -261,6 +261,10 @@ test("最寄りが準備中でも一覧に残し、時刻表が使える最寄�
   await expect(page.locator("#stop-select")).toHaveValue("鶴町一丁目-3a81dc");
   await expect(page.locator("#overview-board")).toBeVisible();
   await expect(page.locator("#pending-message")).toBeHidden();
+
+  await page.selectOption("#stop-select", "西船町-429057");
+  await expect(page.locator("#stop-select")).toHaveValue("西船町-429057");
+  await expect(page.locator("#pending-message")).toBeVisible();
   expectNoBrowserErrors(errors);
   await context.close();
 });
