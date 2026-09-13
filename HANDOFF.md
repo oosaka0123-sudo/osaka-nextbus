@@ -1,4 +1,4 @@
-# HANDOFF — 2026-09-12 agreed MVP complete / implementation queue clear
+# HANDOFF — 2026-09-13 agreed MVP complete / implementation queue clear
 
 このファイルは節目だけで更新する一時引き継ぎです。動的な正本は GitHub Issue / PR / Actions / Commit / Deploy です。
 default branch 上の内容だけを復帰用途に使います。
@@ -14,11 +14,15 @@ default branch 上の内容だけを復帰用途に使います。
   - 下書きlocalStorage保存、GitHub Issues送信、内容コピー、下書き削除
   - GPS / 現在地 / 選択中の停留所・系統は自動添付しない
 - Issue #188 / PR #189: PWA manifestの古い「時刻表は準備中」説明を現行production状態へ修正済み。
-- 最終app production SHA: `e8ea0fed0cd856b8b62775e45fc8246f362600ff`。
+- Issue #192 / PR #193: 現在地からの停留所距離表示と、早く来る順の直近1便の秒カウントをproduction反映済み。
+  - GPS成功時は `現在地から NNm` を表示
+  - 保存済み停留所があっても距離付き近隣リストへ切り替え、選択を維持
+  - 直近1便は `あと X分YY秒` を1秒更新、2便目以降は分表示
+- 最終app production SHA: `2e7150a3a07d6e6ad0717e149bc91dd14afee731`。
 - GitHub Pages latest buildは上記SHAで `built`。
-- live確認: home OK / manifest更新OK / 不要 `_noop` は404。
-- Service Worker: **v40**。
-- final regression: validator PASS / coverage audit **15/15 PASS** / smoke **33/33 PASS**。
+- live確認: home OK / manifest更新OK / app.js距離表示・秒カウントOK / 不要 `_noop` は404。
+- Service Worker: **v41**。
+- final regression: validator PASS / coverage audit **15/15 PASS** / smoke **34/34 PASS**。
 - `collector/config.py PERMISSION_GRANTED=False` を維持。
 
 ## 現在のbus appキュー
