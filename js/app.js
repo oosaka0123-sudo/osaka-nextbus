@@ -107,6 +107,11 @@
     return `あと ${etaParts(date, now).minutes}分`;
   }
 
+  function formatEtaWithSeconds(date, now) {
+    const eta = etaParts(date, now);
+    return `あと ${eta.minutes}分${String(eta.seconds).padStart(2, "0")}秒`;
+  }
+
   function sortedByName(stops) {
     return [...stops].sort((a, b) => a.name.localeCompare(b.name, "ja"));
   }
@@ -116,7 +121,7 @@
     opt.value = stop.id;
     opt.textContent =
       typeof stop.distance === "number"
-        ? `${stop.name} ${formatDistanceLabel(stop.distance)}`
+        ? `${stop.name}（現在地から ${formatDistanceLabel(stop.distance)}）`
         : stop.name;
     return opt;
   }
@@ -222,7 +227,7 @@
 
     els.pendingMessage.hidden = true;
 
-    for (const item of items) {
+    for (const [index, item] of items.entries()) {
       const li = document.createElement("li");
       li.className = "overview-item";
 
@@ -239,7 +244,7 @@
 
       const eta = document.createElement("span");
       eta.className = "overview-eta";
-      eta.textContent = formatEtaMinutes(item.time, now);
+      eta.textContent = index === 0 ? formatEtaWithSeconds(item.time, now) : formatEtaMinutes(item.time, now);
 
       const destination = document.createElement("div");
       destination.className = "overview-destination";
@@ -363,6 +368,7 @@
       populateStopSelect(currentStops);
       setNearbyLabelVisible(false);
       selectStop(savedStopId);
+      locateAndSort(savedStopId);
       return;
     }
 
@@ -383,7 +389,7 @@
     els.locateBtn.textContent = isLocating ? "📍 現在地を取得中..." : "📍 現在地から探す";
   }
 
-  function locateAndSort() {
+  function locateAndSort(preferredStopId = null) {
     if (locating) return;
     if (!("geolocation" in navigator)) {
       showStatus("この端末では現在地を利用できません。バス停は手動で選択してください");
@@ -396,10 +402,21 @@
       (pos) => {
         setLocatingUi(false);
         const position = { lat: pos.coords.latitude, lon: pos.coords.longitude };
-        currentStops = dataSource.getStopsSortedByDistance(position).slice(0, NEARBY_DISPLAY_COUNT);
+        const sortedStops = dataSource.getStopsSortedByDistance(position);
+        currentStops = sortedStops.slice(0, NEARBY_DISPLAY_COUNT);
+        if (preferredStopId && !currentStops.some((stop) => stop.id === preferredStopId)) {
+          const preferredStop = sortedStops.find((stop) => stop.id === preferredStopId);
+          if (preferredStop) {
+            currentStops = [...currentStops.slice(0, NEARBY_DISPLAY_COUNT - 1), preferredStop]
+              .sort((a, b) => a.distance - b.distance);
+          }
+        }
         populateStopSelect(currentStops);
         setNearbyLabelVisible(true);
-        selectStop(currentStops[0].id);
+        const stopToSelect = currentStops.some((stop) => stop.id === preferredStopId)
+          ? preferredStopId
+          : currentStops[0]?.id;
+        if (stopToSelect) selectStop(stopToSelect);
         showStatus(null);
       },
       (err) => {
