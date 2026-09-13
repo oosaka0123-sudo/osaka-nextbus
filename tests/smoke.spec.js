@@ -67,7 +67,11 @@ test("号数未選択では早く来る順5件に号数・時刻・行き先が�
     await expect(item.locator(".overview-route")).not.toHaveText("");
     await expect(item.locator(".overview-time")).toHaveText(/^\d{2}:\d{2}$/);
     await expect(item.locator(".overview-destination")).not.toHaveText("");
-    await expect(item.locator(".overview-eta")).toHaveText(/^あと \d+分$/);
+    if (i === 0) {
+      await expect(item.locator(".overview-eta")).toHaveText(/^あと \d+分\d{2}秒$/);
+    } else {
+      await expect(item.locator(".overview-eta")).toHaveText(/^あと \d+分$/);
+    }
   }
   expectNoBrowserErrors(errors);
 });
@@ -209,9 +213,33 @@ test("GPS成功時は近い順10停留所に絞り込まれる", async ({ browse
 
   await expect(page.locator("#nearby-label")).toBeVisible();
   await expect(page.locator("#stop-select option")).toHaveCount(10);
+  const distanceLabels = await page.locator("#stop-select option").allTextContents();
+  expect(distanceLabels.every((text) => /（現在地から \d+m）/.test(text))).toBe(true);
   await expect(page.locator("#route-select")).toHaveValue("");
   await expect(page.locator("#status-message")).toBeHidden();
   await expect(page.locator("#locate-btn")).toBeInViewport();
+  expectNoBrowserErrors(errors);
+  await context.close();
+});
+
+test("保存済み停留所があってもGPS成功時は距離付き近隣リストへ切り替え選択を維持する", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({
+    baseURL,
+    permissions: ["geolocation"],
+    geolocation: { latitude: 34.6937, longitude: 135.5023 },
+    viewport: { width: 390, height: 844 },
+  });
+  const page = await context.newPage();
+  const errors = attachErrorCollector(page);
+  await page.addInitScript(() => {
+    localStorage.setItem("osaka-nextbus:selection", JSON.stringify({ stopId: "鶴町一丁目-3a81dc" }));
+  });
+  await page.goto("/");
+
+  await expect(page.locator("#nearby-label")).toBeVisible();
+  await expect(page.locator("#stop-select option")).toHaveCount(10);
+  await expect(page.locator("#stop-select")).toHaveValue("鶴町一丁目-3a81dc");
+  await expect(page.locator('#stop-select option[value="鶴町一丁目-3a81dc"]')).toContainText(/現在地から \d+m/);
   expectNoBrowserErrors(errors);
   await context.close();
 });
@@ -235,7 +263,7 @@ test("GPS拒否時は全停留所から手動選択できる", async ({ browser,
   await context.close();
 });
 
-test("Service Worker v40でオフラインでもextra側91号を利用できる", async ({ context, page }) => {
+test("Service Worker v41でオフラインでもextra側91号を利用できる", async ({ context, page }) => {
   const errors = attachErrorCollector(page);
   await waitForData(page);
 
@@ -249,7 +277,7 @@ test("Service Worker v40でオフラインでもextra側91号を利用できる"
   await expect(page.locator("#stop-select option").first()).toBeAttached();
 
   const cacheNames = await page.evaluate(() => caches.keys());
-  expect(cacheNames).toContain("osaka-nextbus-v40");
+  expect(cacheNames).toContain("osaka-nextbus-v41");
 
   await context.setOffline(true);
   await page.reload({ waitUntil: "domcontentloaded" });
