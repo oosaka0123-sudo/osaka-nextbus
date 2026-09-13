@@ -19,7 +19,7 @@ default branch 上の内容だけを復帰用途に使います。
   - 保存済み停留所があっても距離付き近隣リストへ切り替え、選択を維持
   - 直近1便は `あと X分YY秒` を1秒更新、2便目以降は分表示
 - 最終app production SHA: `2e7150a3a07d6e6ad0717e149bc91dd14afee731`。
-- GitHub Pages latest buildは上記SHAで `built`。
+- PR #193 merge時点で、上記app production SHAのGitHub Pages buildが `built` であることを確認済み。
 - live確認: home OK / manifest更新OK / app.js距離表示・秒カウントOK / 不要 `_noop` は404。
 - Service Worker: **v41**。
 - final regression: validator PASS / coverage audit **15/15 PASS** / smoke **34/34 PASS**。
