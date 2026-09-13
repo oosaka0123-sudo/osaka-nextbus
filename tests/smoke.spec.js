@@ -244,6 +244,27 @@ test("保存済み停留所があってもGPS成功時は距離付き近隣リ�
   await context.close();
 });
 
+test("最寄りが準備中でも一覧に残し、時刻表が使える最寄り停留所を自動選択する", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({
+    baseURL,
+    permissions: ["geolocation"],
+    geolocation: { latitude: 34.63016132775102, longitude: 135.4577720148817 },
+    viewport: { width: 390, height: 844 },
+  });
+  const page = await context.newPage();
+  const errors = attachErrorCollector(page);
+  await freezeNow(page, "2026-09-13T10:00:00+09:00");
+  await page.goto("/");
+
+  await expect(page.locator('#stop-select option[value="西船町-429057"]')).toBeAttached();
+  await expect(page.locator('#stop-select option[value="西船町-429057"]')).toContainText(/現在地から \d+m/);
+  await expect(page.locator("#stop-select")).toHaveValue("鶴町一丁目-3a81dc");
+  await expect(page.locator("#overview-board")).toBeVisible();
+  await expect(page.locator("#pending-message")).toBeHidden();
+  expectNoBrowserErrors(errors);
+  await context.close();
+});
+
 test("GPS拒否時は全停留所から手動選択できる", async ({ browser, baseURL }) => {
   const context = await browser.newContext({
     baseURL,
@@ -263,7 +284,7 @@ test("GPS拒否時は全停留所から手動選択できる", async ({ browser,
   await context.close();
 });
 
-test("Service Worker v41でオフラインでもextra側91号を利用できる", async ({ context, page }) => {
+test("Service Worker v42でオフラインでもextra側91号を利用できる", async ({ context, page }) => {
   const errors = attachErrorCollector(page);
   await waitForData(page);
 
@@ -277,7 +298,7 @@ test("Service Worker v41でオフラインでもextra側91号を利用できる"
   await expect(page.locator("#stop-select option").first()).toBeAttached();
 
   const cacheNames = await page.evaluate(() => caches.keys());
-  expect(cacheNames).toContain("osaka-nextbus-v41");
+  expect(cacheNames).toContain("osaka-nextbus-v42");
 
   await context.setOffline(true);
   await page.reload({ waitUntil: "domcontentloaded" });

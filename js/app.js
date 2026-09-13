@@ -116,6 +116,16 @@
     return [...stops].sort((a, b) => a.name.localeCompare(b.name, "ja"));
   }
 
+  function stopHasUpcomingTimetable(stopId, now = new Date()) {
+    const routes = dataSource.getRoutesForStop(stopId).filter((route) => !route.pending);
+    return routes.some((route) =>
+      dataSource
+        .getDirectionsForRoute(route.id)
+        .filter((direction) => !direction.pending)
+        .some((direction) => dataSource.getNextDepartures(direction.id, now, 1).length > 0)
+    );
+  }
+
   function makeStopOption(stop) {
     const opt = document.createElement("option");
     opt.value = stop.id;
@@ -413,9 +423,15 @@
         }
         populateStopSelect(currentStops);
         setNearbyLabelVisible(true);
-        const stopToSelect = currentStops.some((stop) => stop.id === preferredStopId)
+        const now = new Date();
+        const preferredIsUsable =
+          preferredStopId &&
+          currentStops.some((stop) => stop.id === preferredStopId) &&
+          stopHasUpcomingTimetable(preferredStopId, now);
+        const nearestUsable = currentStops.find((stop) => stopHasUpcomingTimetable(stop.id, now));
+        const stopToSelect = preferredIsUsable
           ? preferredStopId
-          : currentStops[0]?.id;
+          : nearestUsable?.id || currentStops[0]?.id;
         if (stopToSelect) selectStop(stopToSelect);
         showStatus(null);
       },
