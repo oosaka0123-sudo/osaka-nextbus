@@ -245,10 +245,12 @@ test("保存済み停留所があってもGPS成功時は距離付き近隣リ�
 });
 
 test("最寄りが準備中でも一覧に残し、時刻表が使える最寄り停留所を自動選択する", async ({ browser, baseURL }) => {
+  // 西船町は Issue #202 で70号がproduction反映されpendingでなくなったため、
+  // 同じ保証を維持するため近隣の未整備停留所である東船町へfixtureを移設している。
   const context = await browser.newContext({
     baseURL,
     permissions: ["geolocation"],
-    geolocation: { latitude: 34.63016132775102, longitude: 135.4577720148817 },
+    geolocation: { latitude: 34.629480011339574, longitude: 135.46750335673661 },
     viewport: { width: 390, height: 844 },
   });
   const page = await context.newPage();
@@ -256,14 +258,14 @@ test("最寄りが準備中でも一覧に残し、時刻表が使える最寄�
   await freezeNow(page, "2026-09-13T10:00:00+09:00");
   await page.goto("/");
 
-  await expect(page.locator('#stop-select option[value="西船町-429057"]')).toBeAttached();
-  await expect(page.locator('#stop-select option[value="西船町-429057"]')).toContainText(/現在地から \d+m/);
-  await expect(page.locator("#stop-select")).toHaveValue("鶴町一丁目-3a81dc");
+  await expect(page.locator('#stop-select option[value="東船町-cb470b"]')).toBeAttached();
+  await expect(page.locator('#stop-select option[value="東船町-cb470b"]')).toContainText(/現在地から \d+m/);
+  await expect(page.locator("#stop-select")).toHaveValue("大運橋通-b25844");
   await expect(page.locator("#overview-board")).toBeVisible();
   await expect(page.locator("#pending-message")).toBeHidden();
 
-  await page.selectOption("#stop-select", "西船町-429057");
-  await expect(page.locator("#stop-select")).toHaveValue("西船町-429057");
+  await page.selectOption("#stop-select", "東船町-cb470b");
+  await expect(page.locator("#stop-select")).toHaveValue("東船町-cb470b");
   await expect(page.locator("#pending-message")).toBeVisible();
   expectNoBrowserErrors(errors);
   await context.close();
@@ -288,7 +290,7 @@ test("GPS拒否時は全停留所から手動選択できる", async ({ browser,
   await context.close();
 });
 
-test("Service Worker v42でオフラインでもextra側91号を利用できる", async ({ context, page }) => {
+test("Service Worker v43でオフラインでもextra側91号を利用できる", async ({ context, page }) => {
   const errors = attachErrorCollector(page);
   await waitForData(page);
 
@@ -302,7 +304,7 @@ test("Service Worker v42でオフラインでもextra側91号を利用できる"
   await expect(page.locator("#stop-select option").first()).toBeAttached();
 
   const cacheNames = await page.evaluate(() => caches.keys());
-  expect(cacheNames).toContain("osaka-nextbus-v42");
+  expect(cacheNames).toContain("osaka-nextbus-v43");
 
   await context.setOffline(true);
   await page.reload({ waitUntil: "domcontentloaded" });
@@ -532,5 +534,52 @@ test("鶴町四丁目87号新千歳経由なんば方面は公式休日時刻を
   await expect(page.locator("#time-0")).toHaveText("07:13");
   await expect(page.locator("#time-1")).toHaveText("07:52");
   await expect(page.locator("#time-2")).toHaveText("08:28");
+  expectNoBrowserErrors(errors);
+});
+
+test("西船町70号ドーム前千代崎方面は平日・土曜・休日で公式時刻をUI表示する", async ({ page }) => {
+  const errors = attachErrorCollector(page);
+
+  // 1. 平日 (2026-09-14 月曜 07:25)
+  await freezeNow(page, "2026-09-14T07:25:00+09:00");
+  await waitForData(page);
+  await selectRoute(page, "西船町-429057", "西船町-429057__70号", "ドーム前千代崎方面");
+  await expect(page.locator("#dest-0")).toHaveText("ドーム前千代崎");
+  await expect(page.locator("#time-0")).toHaveText("07:30");
+  await expect(page.locator("#time-1")).toHaveText("08:00");
+  await expect(page.locator("#time-2")).toHaveText("08:21");
+  await expect(page.locator("#pending-message")).toBeHidden();
+
+  // 2. 土曜 (2026-09-19 土曜 07:05)
+  await page.reload();
+  await freezeNow(page, "2026-09-19T07:05:00+09:00");
+  await waitForData(page);
+  await selectRoute(page, "西船町-429057", "西船町-429057__70号", "ドーム前千代崎方面");
+  await expect(page.locator("#time-0")).toHaveText("07:10");
+  await expect(page.locator("#time-1")).toHaveText("07:25");
+  await expect(page.locator("#time-2")).toHaveText("07:40");
+  await expect(page.locator("#pending-message")).toBeHidden();
+
+  // 3. 休日 (2026-09-13 日曜 06:55)
+  await page.reload();
+  await freezeNow(page, "2026-09-13T06:55:00+09:00");
+  await waitForData(page);
+  await selectRoute(page, "西船町-429057", "西船町-429057__70号", "ドーム前千代崎方面");
+  await expect(page.locator("#time-0")).toHaveText("07:00");
+  await expect(page.locator("#time-1")).toHaveText("07:20");
+  await expect(page.locator("#time-2")).toHaveText("07:45");
+  await expect(page.locator("#pending-message")).toBeHidden();
+  expectNoBrowserErrors(errors);
+});
+
+test("西船町70急行はEvidence未確認のためfail closedで準備中のまま", async ({ page }) => {
+  const errors = attachErrorCollector(page);
+  await freezeNow(page, "2026-09-14T07:00:00+09:00");
+  await waitForData(page);
+  await page.selectOption("#stop-select", "西船町-429057");
+  await expect(page.locator('#route-select option[value="西船町-429057__70急行"]')).toBeAttached();
+  await page.selectOption("#route-select", "西船町-429057__70急行");
+  await expect(page.locator("#direction-select")).toBeDisabled();
+  await expect(page.locator("#pending-message")).toBeVisible();
   expectNoBrowserErrors(errors);
 });
