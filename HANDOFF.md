@@ -1,4 +1,4 @@
-# HANDOFF — 2026-09-16 西船町70号 production反映後
+# HANDOFF — 2026-09-17 production完成確認後
 
 このファイルは節目だけで更新する一時引き継ぎです。動的な正本は GitHub Issue / PR / Actions / Commit / Deploy です。
 default branch 上の内容だけを復帰用途に使います。
@@ -23,11 +23,11 @@ default branch 上の内容だけを復帰用途に使います。
   - 準備中の停留所は近い順リストから削除しない
   - 自動選択だけ、次便を表示できる最寄り停留所を優先
   - 準備中停留所を手動選択した場合は従来どおり準備中表示
-- 最終app production SHAはIssue #202のPRマージ後にActions/Pages状態を確認して更新すること。
+- 最終app production SHA: `be6179d32d8f39aecc4ae495b3ec1e12ec76bb9f`（PR #203 merge）。同SHAで `Validate bus data` SUCCESS、GitHub Pages build/deploy SUCCESS を確認済み。
 - live確認(PR #199時点): home OK / manifest更新OK / 距離表示・秒カウントOK / 西船町は一覧保持 / 自動選択は鶴町一丁目 / 西船町手動選択で準備中表示 / 不要 `_noop` は404。
   - Issue #202でこの回帰保証は東船町へ移設し、西船町自体は70号でproduction時刻表を表示するようになった。
 - Service Worker: **v43**。
-- final regression(Issue #202時点): `npm run validate` PASS / smoke最新結果はActionsを正とする。
+- final regression(Issue #202時点): `npm run validate` PASS / smoke **37/37 PASS** / coverage audit **15/15 PASS**。
 - `collector/config.py PERMISSION_GRANTED=False` を維持。
 
 ## 現在のbus appキュー
