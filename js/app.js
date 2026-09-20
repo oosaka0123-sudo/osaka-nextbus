@@ -32,6 +32,7 @@
     nextBus: document.getElementById("next-bus"),
     upcoming: document.getElementById("upcoming"),
     pendingMessage: document.getElementById("pending-message"),
+    noMoreTodayMessage: document.getElementById("no-more-today-message"),
     eta0: document.getElementById("eta-0"),
     eta0Seconds: document.getElementById("eta-0-seconds"),
     time0: document.getElementById("time-0"),
@@ -122,7 +123,9 @@
       dataSource
         .getDirectionsForRoute(route.id)
         .filter((direction) => !direction.pending)
-        .some((direction) => dataSource.getNextDepartures(direction.id, now, 1).length > 0)
+        .some((direction) =>
+          dataSource.getNextDepartures(direction.id, now, 1).some((departure) => departure.serviceDayOffset === 0)
+        )
     );
   }
 
@@ -192,6 +195,35 @@
     els.detailLabel.hidden = false;
   }
 
+  function hideEmptyStateMessages() {
+    els.pendingMessage.hidden = true;
+    els.noMoreTodayMessage.hidden = true;
+  }
+
+  function canConfirmNoMoreTodayForDirection(directionId, now) {
+    const status = dataSource.getServiceDayStatus(directionId, now);
+    if (status === "pending" || status === "upcoming") return false;
+    return dataSource
+      .getNextDepartures(directionId, now, 1)
+      .some((departure) => departure.serviceDayOffset > 0);
+  }
+
+  function canConfirmNoMoreToday(routes, now) {
+    const directions = routes.flatMap((route) => {
+      if (!route || route.pending) return [];
+      return dataSource.getDirectionsForRoute(route.id).filter((direction) => !direction.pending);
+    });
+    return (
+      directions.length > 0 &&
+      directions.every((direction) => canConfirmNoMoreTodayForDirection(direction.id, now))
+    );
+  }
+
+  function showNoMoreTodayOrPending(canConfirmNoMoreTodayValue) {
+    els.pendingMessage.hidden = canConfirmNoMoreTodayValue;
+    els.noMoreTodayMessage.hidden = !canConfirmNoMoreTodayValue;
+  }
+
   function collectUpcoming(routes, now, count) {
     const items = [];
 
@@ -200,7 +232,9 @@
       const directions = dataSource.getDirectionsForRoute(route.id);
       for (const direction of directions) {
         if (!direction || direction.pending) continue;
-        const departures = dataSource.getNextDepartures(direction.id, now, count);
+        const departures = dataSource
+          .getNextDepartures(direction.id, now, count)
+          .filter((departure) => departure.serviceDayOffset === 0);
         for (const departure of departures) {
           items.push({
             time: departure.time,
@@ -231,11 +265,11 @@
 
     if (items.length === 0) {
       els.overviewBoard.hidden = true;
-      els.pendingMessage.hidden = false;
+      showNoMoreTodayOrPending(canConfirmNoMoreToday(routes, now));
       return;
     }
 
-    els.pendingMessage.hidden = true;
+    hideEmptyStateMessages();
 
     for (const [index, item] of items.entries()) {
       const li = document.createElement("li");
@@ -274,19 +308,21 @@
     }
 
     const now = new Date();
-    const departures = dataSource.getNextDepartures(selectedDirectionId, now, 3);
+    const departures = dataSource
+      .getNextDepartures(selectedDirectionId, now, 3)
+      .filter((departure) => departure.serviceDayOffset === 0);
     setDetailMode();
 
     if (departures.length === 0) {
       els.nextBus.hidden = true;
       els.upcoming.hidden = true;
-      els.pendingMessage.hidden = false;
+      showNoMoreTodayOrPending(canConfirmNoMoreTodayForDirection(selectedDirectionId, now));
       return;
     }
 
     els.nextBus.hidden = false;
     els.upcoming.hidden = false;
-    els.pendingMessage.hidden = true;
+    hideEmptyStateMessages();
 
     const first = departures[0];
     const firstEta = etaParts(first.time, now);

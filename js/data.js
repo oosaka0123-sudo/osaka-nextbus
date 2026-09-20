@@ -73,11 +73,12 @@
  *   getRoutesForStop(stopId): Route[]
  *   getDirectionsForRoute(routeId): Direction[]
  *   getNextDepartures(directionId, fromDate, count): Departure[]
+ *   getServiceDayStatus(directionId, fromDate): "pending"|"no-service"|"upcoming"|"ended"
  *
  * Stop      = { id, name, lat, lon }
  * Route     = { id, stopId, label, destination, pending?: true }       // 系統番号
  * Direction = { id, routeId, direction, destination, pending?: true }  // 方面・行先
- * Departure = { time: Date }
+ * Departure = { time: Date, serviceDayOffset: number }
  */
 
 const DATA_URLS = {
@@ -536,6 +537,31 @@ const BusDataSource = {
     return directions;
   },
 
+
+  /**
+   * 指定日時が属する日本時間のサービス日について、時刻表確認状態と次便有無を返す。
+   * 24:xx は同じサービス日の時刻として扱う。
+   */
+  getServiceDayStatus(directionId, fromDate) {
+    const timesByCalendar = this._timetableByDirectionId.get(directionId);
+    if (!timesByCalendar) return "pending";
+
+    const dayStartEpoch = TokyoTime.midnightEpoch(fromDate);
+    const { year, month, day } = TokyoTime.parts(new Date(dayStartEpoch));
+    const calendarType = JapaneseCalendar.calendarTypeFor(year, month, day);
+    const verifiedCalendars = timesByCalendar.verifiedCalendars || new Set(CALENDAR_TYPES);
+    if (!verifiedCalendars.has(calendarType)) return "pending";
+
+    const times = timesByCalendar[calendarType] || [];
+    if (times.length === 0) return "no-service";
+
+    const hasUpcoming = times.some((hhmm) => {
+      const [h, m] = hhmm.split(":").map(Number);
+      return dayStartEpoch + (h * 60 + m) * 60000 > fromDate.getTime();
+    });
+    return hasUpcoming ? "upcoming" : "ended";
+  },
+
   /**
    * 指定方面の「次発」以降の便を count 件返す。
    * 平日/土曜/休日の判定は日本時間の暦日ごとに行い、24:00を超える時刻表記
@@ -561,7 +587,7 @@ const BusDataSource = {
         const [h, m] = hhmm.split(":").map(Number);
         const epoch = baseEpoch + (h * 60 + m) * 60000;
         if (epoch > fromDate.getTime()) {
-          results.push({ time: new Date(epoch) });
+          results.push({ time: new Date(epoch), serviceDayOffset: dayOffset });
           if (results.length >= count) break;
         }
       }

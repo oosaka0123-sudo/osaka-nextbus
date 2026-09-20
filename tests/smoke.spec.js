@@ -101,6 +101,7 @@ test("鶴町一丁目71号で次の3便が表示される", async ({ page }) => 
 
 test("extra側の鶴町一丁目91号がUIに結合される", async ({ page }) => {
   const errors = attachErrorCollector(page);
+  await freezeNow(page, "2026-09-20T10:00:00+09:00");
   await waitForData(page);
   await selectRoute(
     page,
@@ -290,7 +291,7 @@ test("GPS拒否時は全停留所から手動選択できる", async ({ browser,
   await context.close();
 });
 
-test("Service Worker v45でオフラインでもextra側91号を利用できる", async ({ context, page }) => {
+test("Service Worker v46でオフラインでもextra側91号を利用できる", async ({ context, page }) => {
   const errors = attachErrorCollector(page);
   await waitForData(page);
 
@@ -304,7 +305,7 @@ test("Service Worker v45でオフラインでもextra側91号を利用できる"
   await expect(page.locator("#stop-select option").first()).toBeAttached();
 
   const cacheNames = await page.evaluate(() => caches.keys());
-  expect(cacheNames).toContain("osaka-nextbus-v45");
+  expect(cacheNames).toContain("osaka-nextbus-v46");
 
   await context.setOffline(true);
   await page.reload({ waitUntil: "domcontentloaded" });
@@ -583,6 +584,49 @@ test("鶴町南公園72号天保山方面はEvidence未整備のため準備中�
   await page.selectOption("#route-select", "鶴町南公園-3c7410__72号");
   await expect(page.locator("#direction-select")).toBeDisabled();
   await expect(page.locator("#pending-message")).toBeVisible();
+  expectNoBrowserErrors(errors);
+});
+
+test("鶴町南公園87号は当日終バス後の翌日便を早い順へ混ぜない", async ({ page }) => {
+  const errors = attachErrorCollector(page);
+  await freezeNow(page, "2026-09-20T19:39:00+09:00");
+  await waitForData(page);
+  await page.selectOption("#stop-select", "鶴町南公園-3c7410");
+  await page.selectOption("#route-select", "鶴町南公園-3c7410__87号");
+
+  const items = page.locator("#overview-list .overview-item");
+  await expect(items).toHaveCount(1);
+  await expect(items.first().locator(".overview-time")).toHaveText("20:34");
+  await expect(page.locator("#overview-list")).not.toContainText("07:15");
+  await expect(page.locator("#pending-message")).toBeHidden();
+  await expect(page.locator("#no-more-today-message")).toBeHidden();
+  expectNoBrowserErrors(errors);
+});
+
+test("鶴町南公園87号は終バス後に本日の次便なしを表示する", async ({ page }) => {
+  const errors = attachErrorCollector(page);
+  await freezeNow(page, "2026-09-20T20:35:00+09:00");
+  await waitForData(page);
+  await page.selectOption("#stop-select", "鶴町南公園-3c7410");
+  await page.selectOption("#route-select", "鶴町南公園-3c7410__87号");
+
+  await expect(page.locator("#overview-board")).toBeHidden();
+  await expect(page.locator("#no-more-today-message")).toBeVisible();
+  await expect(page.locator("#pending-message")).toBeHidden();
+  expectNoBrowserErrors(errors);
+});
+
+test("鶴町南公園87号詳細も翌朝便を次の3便へ混ぜない", async ({ page }) => {
+  const errors = attachErrorCollector(page);
+  await freezeNow(page, "2026-09-20T19:39:00+09:00");
+  await waitForData(page);
+  await selectRoute(page, "鶴町南公園-3c7410", "鶴町南公園-3c7410__87号", "なんば方面");
+
+  await expect(page.locator("#time-0")).toHaveText("20:34");
+  await expect(page.locator("#time-1")).toHaveText("--:--");
+  await expect(page.locator("#time-2")).toHaveText("--:--");
+  await expect(page.locator("#pending-message")).toBeHidden();
+  await expect(page.locator("#no-more-today-message")).toBeHidden();
   expectNoBrowserErrors(errors);
 });
 
