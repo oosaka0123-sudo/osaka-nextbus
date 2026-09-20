@@ -1,7 +1,7 @@
 {
   "dataSource": "manual",
   "lastUpdated": "2026-09-20",
-  "note": "停留所名・緯度経度・系統番号は国土数値情報「バス停留所データ(P11)」2022年度(令和4年度)版から、事業者名が「大阪シティバス（株）」の停留所992件・系統(停留所×系統番号)1915件を抽出した実データ。系統の行き先・方面はP11データに含まれていないため、時刻表は大阪シティバス公式の公開時刻表・Bus-Vision公開画面・現地掲示写真を目視確認して手動整備している。2026-09-20時点で44系統×方面を入力済みで、それ以外は「時刻表データ準備中」表示。",
+  "note": "停留所名・緯度経度・系統番号は国土数値情報「バス停留所データ(P11)」2022年度(令和4年度)版から、事業者名が「大阪シティバス（株）」の停留所992件・系統(停留所×系統番号)1915件を抽出した実データ。系統の行き先・方面はP11データに含まれていないため、時刻表は大阪シティバス公式の公開時刻表・Bus-Vision公開画面・現地掲示写真を目視確認して手動整備している。2026-09-20時点で45系統×方面を入力済みで、それ以外は「時刻表データ準備中」表示。",
   "stopsSource": {
     "dataset": "国土数値情報 バス停留所データ(P11) 2022年度(令和4年度)版",
     "prefecture": "大阪府(27)",
@@ -322,6 +322,13 @@
         "direction": "鶴町四丁目方面",
         "destination": "鶴町四丁目",
         "note": "公式Bus-Vision地下鉄動物園前 stopCd=340 / poleCd=70 / strLineList=80-2-1 の80号公開画面をIssue #206でVERIFIED Evidence確認。detail URLで lineCd=80 / routeCd=8000 / updownCd=2 / revYmd=20260831 を確認。平日2026-09-24(木) dateDivCd=11 29便、土曜2026-09-26(土) dateDivCd=13 28便、休日2026-09-20(日) dateDivCd=12 25便。3曜日完全確認済み(verifiedCalendars=weekday/saturday/holiday)。"
+      },
+      {
+        "stop": "鶴町南公園",
+        "route": "87号",
+        "direction": "なんば方面",
+        "destination": "なんば",
+        "note": "公式Bus-Vision鶴町南公園 stopCd=1745 / poleCd=70 / strLineList=87-1-1 の87号公開画面をIssue #210でVERIFIED Evidence確認。detail URLで lineCd=87 / routeCd=8700 / updownCd=1 / revYmd=20260831 を確認。平日2026-09-24(木) dateDivCd=11 37便、土曜2026-09-26(土) dateDivCd=13 33便、休日2026-09-20(日) dateDivCd=12 27便。3曜日完全確認済み(verifiedCalendars=weekday/saturday/holiday)。同停留所72号天保山方面はEvidence未整備のためproduction未反映で準備中を維持する。"
       }
     ]
   }

@@ -290,7 +290,7 @@ test("GPS拒否時は全停留所から手動選択できる", async ({ browser,
   await context.close();
 });
 
-test("Service Worker v44でオフラインでもextra側91号を利用できる", async ({ context, page }) => {
+test("Service Worker v45でオフラインでもextra側91号を利用できる", async ({ context, page }) => {
   const errors = attachErrorCollector(page);
   await waitForData(page);
 
@@ -304,7 +304,7 @@ test("Service Worker v44でオフラインでもextra側91号を利用できる"
   await expect(page.locator("#stop-select option").first()).toBeAttached();
 
   const cacheNames = await page.evaluate(() => caches.keys());
-  expect(cacheNames).toContain("osaka-nextbus-v44");
+  expect(cacheNames).toContain("osaka-nextbus-v45");
 
   await context.setOffline(true);
   await page.reload({ waitUntil: "domcontentloaded" });
@@ -534,6 +534,55 @@ test("鶴町四丁目87号新千歳経由なんば方面は公式休日時刻を
   await expect(page.locator("#time-0")).toHaveText("07:13");
   await expect(page.locator("#time-1")).toHaveText("07:52");
   await expect(page.locator("#time-2")).toHaveText("08:28");
+  expectNoBrowserErrors(errors);
+});
+
+test("鶴町南公園87号なんば方面は公式平日時刻をUI表示する", async ({ page }) => {
+  const errors = attachErrorCollector(page);
+  await freezeNow(page, "2026-09-24T15:50:00+09:00");
+  await waitForData(page);
+  await selectRoute(page, "鶴町南公園-3c7410", "鶴町南公園-3c7410__87号", "なんば方面");
+  await expect(page.locator("#dest-0")).toHaveText("なんば");
+  await expect(page.locator("#time-0")).toHaveText("15:53");
+  await expect(page.locator("#time-1")).toHaveText("16:13");
+  await expect(page.locator("#time-2")).toHaveText("16:39");
+  await expect(page.locator("#pending-message")).toBeHidden();
+  expectNoBrowserErrors(errors);
+});
+
+test("鶴町南公園87号なんば方面は公式土曜時刻をUI表示する", async ({ page }) => {
+  const errors = attachErrorCollector(page);
+  await freezeNow(page, "2026-09-26T15:50:00+09:00");
+  await waitForData(page);
+  await selectRoute(page, "鶴町南公園-3c7410", "鶴町南公園-3c7410__87号", "なんば方面");
+  await expect(page.locator("#time-0")).toHaveText("15:56");
+  await expect(page.locator("#time-1")).toHaveText("16:17");
+  await expect(page.locator("#time-2")).toHaveText("16:40");
+  await expect(page.locator("#pending-message")).toBeHidden();
+  expectNoBrowserErrors(errors);
+});
+
+test("鶴町南公園87号なんば方面は公式休日時刻をUI表示する", async ({ page }) => {
+  const errors = attachErrorCollector(page);
+  await freezeNow(page, "2026-09-20T15:50:00+09:00");
+  await waitForData(page);
+  await selectRoute(page, "鶴町南公園-3c7410", "鶴町南公園-3c7410__87号", "なんば方面");
+  await expect(page.locator("#time-0")).toHaveText("16:10");
+  await expect(page.locator("#time-1")).toHaveText("16:39");
+  await expect(page.locator("#time-2")).toHaveText("17:11");
+  await expect(page.locator("#pending-message")).toBeHidden();
+  expectNoBrowserErrors(errors);
+});
+
+test("鶴町南公園72号天保山方面はEvidence未整備のため準備中のまま", async ({ page }) => {
+  const errors = attachErrorCollector(page);
+  await freezeNow(page, "2026-09-20T15:50:00+09:00");
+  await waitForData(page);
+  await page.selectOption("#stop-select", "鶴町南公園-3c7410");
+  await expect(page.locator('#route-select option[value="鶴町南公園-3c7410__72号"]')).toBeAttached();
+  await page.selectOption("#route-select", "鶴町南公園-3c7410__72号");
+  await expect(page.locator("#direction-select")).toBeDisabled();
+  await expect(page.locator("#pending-message")).toBeVisible();
   expectNoBrowserErrors(errors);
 });
 
