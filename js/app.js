@@ -200,19 +200,28 @@
     els.noMoreTodayMessage.hidden = true;
   }
 
-  function hasVerifiedToday(routes, now) {
-    return routes.some((route) => {
-      if (!route || route.pending) return false;
-      return dataSource
-        .getDirectionsForRoute(route.id)
-        .filter((direction) => !direction.pending)
-        .some((direction) => dataSource.getServiceDayStatus(direction.id, now) !== "pending");
-    });
+  function canConfirmNoMoreTodayForDirection(directionId, now) {
+    const status = dataSource.getServiceDayStatus(directionId, now);
+    if (status === "pending" || status === "upcoming") return false;
+    return dataSource
+      .getNextDepartures(directionId, now, 1)
+      .some((departure) => departure.serviceDayOffset > 0);
   }
 
-  function showNoMoreTodayOrPending(isVerifiedToday) {
-    els.pendingMessage.hidden = isVerifiedToday;
-    els.noMoreTodayMessage.hidden = !isVerifiedToday;
+  function canConfirmNoMoreToday(routes, now) {
+    const directions = routes.flatMap((route) => {
+      if (!route || route.pending) return [];
+      return dataSource.getDirectionsForRoute(route.id).filter((direction) => !direction.pending);
+    });
+    return (
+      directions.length > 0 &&
+      directions.every((direction) => canConfirmNoMoreTodayForDirection(direction.id, now))
+    );
+  }
+
+  function showNoMoreTodayOrPending(canConfirmNoMoreTodayValue) {
+    els.pendingMessage.hidden = canConfirmNoMoreTodayValue;
+    els.noMoreTodayMessage.hidden = !canConfirmNoMoreTodayValue;
   }
 
   function collectUpcoming(routes, now, count) {
@@ -256,7 +265,7 @@
 
     if (items.length === 0) {
       els.overviewBoard.hidden = true;
-      showNoMoreTodayOrPending(hasVerifiedToday(routes, now));
+      showNoMoreTodayOrPending(canConfirmNoMoreToday(routes, now));
       return;
     }
 
@@ -307,7 +316,7 @@
     if (departures.length === 0) {
       els.nextBus.hidden = true;
       els.upcoming.hidden = true;
-      showNoMoreTodayOrPending(dataSource.getServiceDayStatus(selectedDirectionId, now) !== "pending");
+      showNoMoreTodayOrPending(canConfirmNoMoreTodayForDirection(selectedDirectionId, now));
       return;
     }
 
