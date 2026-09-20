@@ -101,6 +101,7 @@ test("鶴町一丁目71号で次の3便が表示される", async ({ page }) => 
 
 test("extra側の鶴町一丁目91号がUIに結合される", async ({ page }) => {
   const errors = attachErrorCollector(page);
+  await freezeNow(page, "2026-09-20T10:00:00+09:00");
   await waitForData(page);
   await selectRoute(
     page,
