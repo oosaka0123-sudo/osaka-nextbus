@@ -1,4 +1,4 @@
-# HANDOFF — 2026-09-20 鶴町南公園87号 production反映後
+# HANDOFF — 2026-09-20 翌日便混在修正 production反映後
 
 このファイルは節目だけで更新する一時引き継ぎです。動的な正本は GitHub Issue / PR / Actions / Commit / Deploy です。
 default branch 上の内容だけを復帰用途に使います。
@@ -8,6 +8,7 @@ default branch 上の内容だけを復帰用途に使います。
 - 合意済みMVPは完成・公開・回帰確認済み。
 - 初期MVPの最優先経路 **なんば ⇄ 鶴町四丁目** は、71号・87号について往復とも平日・土曜・休日のproduction時刻表を整備済み。
 - 現在の時刻表coverage: **45系統×方面**。
+- Issue #214 / PR #215: 「早く来る順」と詳細次便に翌日便を当日便の続きとして混在させるUI不具合を修正済み。DepartureへserviceDayOffsetを付与し、表示は当日サービス日(dayOffset=0)に限定。24:xx深夜便は同一サービス日として維持し、未確認曜日のfail-closedも維持。
 - Issue #210 / PR #211: 鶴町南公園87号・なんば方面を公式Bus-Vision Evidenceで確認しproduction反映済み。stopCd=1745 / poleCd=70 / strLineList=87-1-1、平日37便・土曜33便・休日27便を3曜日verifiedで登録。72号天保山方面はEvidence未整備のため準備中を維持。
 - Issue #206 / PR #207: 地下鉄動物園前80号・鶴町四丁目方面を公式Bus-Vision Evidenceで確認しproduction反映済み。stopCd=340 / poleCd=70 / strLineList=80-2-1、平日29便・土曜28便・休日25便を3曜日verifiedで登録。
 - Issue #202: 西船町70号ドーム前千代崎方面の平日・土曜・休日を公式Bus-Vision Evidenceで確認し、production反映済み。同停留所の70急行(routeCd=7009)はEvidence未確認のため準備中のまま。
@@ -25,11 +26,11 @@ default branch 上の内容だけを復帰用途に使います。
   - 準備中の停留所は近い順リストから削除しない
   - 自動選択だけ、次便を表示できる最寄り停留所を優先
   - 準備中停留所を手動選択した場合は従来どおり準備中表示
-- 最終app production SHA: `97906b792afd206ce350900bfeb8d08f0a8673aa`（PR #211 merge）。同SHAで `Validate bus data` SUCCESS、GitHub Pages build/deploy SUCCESS を確認済み。
-- live確認(PR #211時点): 公開 `sw.js` はv45、`timetable-extra.json` に鶴町南公園87号を確認。公開UIで鶴町南公園 → 87号 → なんば方面を選択し、休日2026-09-20 15:50基準で `16:10 / 16:39 / 17:11`、準備中非表示を確認済み。72号天保山方面は方向選択無効・準備中表示を確認済み。
+- 最終app production SHA: `8add47506401cbd56f0037ef0fca7a9477b4e50d`（PR #215 merge）。同SHAで `Validate bus data` SUCCESS、GitHub Pages build/deploy SUCCESS を確認済み。
+- live確認(PR #215時点): 公開 `sw.js` はv46。鶴町南公園 → 87号で2026-09-20 19:39基準は `20:34` のみ表示し、翌日 `07:15 / 07:54 / 08:30` を混在させないことを確認。20:35基準では「本日の次の便はありません」、準備中非表示を確認済み。
 - 地下鉄動物園前80号・西船町70号も引き続きproduction時刻表を表示。西船町70急行はEvidence未確認のため準備中を維持。
-- Service Worker: **v45**。
-- final regression(Issue #210時点): `npm run validate` PASS / smoke **44/44 PASS** / coverage audit **15/15 PASS**。
+- Service Worker: **v46**。
+- final regression(Issue #214時点): `npm run validate` PASS / smoke **47/47 PASS** / coverage audit **15/15 PASS**。
 - `collector/config.py PERMISSION_GRANTED=False` を維持。
 
 ## 現在のbus appキュー
