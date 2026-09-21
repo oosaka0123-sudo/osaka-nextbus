@@ -12,7 +12,7 @@
 <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png" />
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
 <link rel="stylesheet" href="css/style.css" />
-<link rel="stylesheet" href="css/duty-alarm.css?v=58" />
+<link rel="stylesheet" href="css/duty-alarm.css?v=59" />
 </head>
 <body>
 <div class="app alarm-app">
@@ -36,14 +36,22 @@
       <button id="alarm-all" class="alarm-all-option" type="button" aria-pressed="false">全て鳴らす</button>
       <div id="alarm-duty-grid" class="alarm-duty-grid" role="radiogroup" aria-label="勤務を選択"></div>
     </div>
-    <label class="alarm-field">
-      <span>鳴らす印</span>
-      <select id="alarm-mark">
-        <option value="both">黒丸＋白丸</option>
-        <option value="black">黒丸だけ</option>
-        <option value="white">白丸だけ</option>
-      </select>
-    </label>
+    <div class="alarm-field alarm-sound-field">
+      <span>音を選択</span>
+      <div id="alarm-sound-grid" class="alarm-choice-grid" role="radiogroup" aria-label="音を選択">
+        <button type="button" class="alarm-choice-option" data-sound="beep" role="radio">ビープ</button>
+        <button type="button" class="alarm-choice-option" data-sound="chime" role="radio">チャイム</button>
+        <button type="button" class="alarm-choice-option" data-sound="double" role="radio">2連音</button>
+      </div>
+    </div>
+    <div class="alarm-field alarm-volume-field">
+      <span>音量</span>
+      <div id="alarm-volume-grid" class="alarm-choice-grid" role="radiogroup" aria-label="音量を選択">
+        <button type="button" class="alarm-choice-option" data-volume="low" role="radio">小</button>
+        <button type="button" class="alarm-choice-option" data-volume="medium" role="radio">中</button>
+        <button type="button" class="alarm-choice-option" data-volume="high" role="radio">大</button>
+      </div>
+    </div>
     <div class="alarm-lead" aria-label="鳴らすタイミング">
       <span class="alarm-lead-title">何分・何秒前に鳴らす</span>
       <label>
@@ -85,7 +93,7 @@
     <p>このページを開いている間は自動で監視します。画面OFF・省電力・他アプリ使用中はブラウザが停止して鳴らない場合があります。</p>
   </aside>
 </div>
-<script src="js/duty-alarm.js?v=58"></script>
+<script src="js/duty-alarm.js?v=59"></script>
 <script>document.documentElement.dataset.alarmUi="buttons-only";</script>
 </body>
 </html>
