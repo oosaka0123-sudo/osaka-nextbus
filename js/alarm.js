@@ -94,6 +94,7 @@
   let soundEnabled = false;
   let wakeLock = null;
   let firedKey = "";
+  const ALARM_LEAD_MS = 30 * 1000;
 
   const savedDay = localStorage.getItem("funamachi-alarm-day");
   const today = new Date().getDay();
@@ -127,14 +128,20 @@
     return d;
   }
 
+  function alarmAt(eventDate) {
+    return new Date(eventDate.getTime() - ALARM_LEAD_MS);
+  }
+
   function findNext(now = new Date()) {
     const rows = activeSchedule();
     for (const item of rows) {
-      const d = dateAt(item[0], 0);
-      if (d > now) return { item, date: d, tomorrow: false };
+      const eventDate = dateAt(item[0], 0);
+      const alarmDate = alarmAt(eventDate);
+      if (alarmDate > now) return { item, eventDate, alarmDate, tomorrow: false };
     }
     if (!rows.length) return null;
-    return { item: rows[0], date: dateAt(rows[0][0], 1), tomorrow: true };
+    const eventDate = dateAt(rows[0][0], 1);
+    return { item: rows[0], eventDate, alarmDate: alarmAt(eventDate), tomorrow: true };
   }
 
   function renderList() {
@@ -146,7 +153,7 @@
       const li = document.createElement("li");
       li.className = "alarm-time-item";
       const eventDate = dateAt(time);
-      if (eventDate < now) li.classList.add("is-past");
+      if (alarmAt(eventDate) < now) li.classList.add("is-past");
       if (next && !next.tomorrow && next.item[0] === time && next.item[1] === mark) li.classList.add("is-next");
       const dot = document.createElement("i");
       dot.className = "dot " + (mark === "black" ? "dot-black" : "dot-white");
@@ -168,17 +175,24 @@
       return;
     }
     nextEl.textContent = next.item[0] + (next.tomorrow ? " 明日" : "");
-    const seconds = Math.max(0, Math.floor((next.date - now) / 1000));
+    const seconds = Math.max(0, Math.floor((next.alarmDate - now) / 1000));
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
     const s = seconds % 60;
-    countdownEl.textContent = "あと " + h + "時間 " + m + "分 " + s + "秒";
+    countdownEl.textContent = "30秒前に鳴動・あと " + h + "時間 " + m + "分 " + s + "秒";
 
-    const hhmm = String(now.getHours()).padStart(2,"0") + ":" + String(now.getMinutes()).padStart(2,"0");
-    const dateKey = now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0")+"-"+String(now.getDate()).padStart(2,"0")+" "+hhmm+"|"+dayEl.value+"|"+dutyEl.value+"|"+markEl.value;
-    if (soundEnabled && now.getSeconds() <= 1 && activeSchedule().some((item) => item[0] === hhmm) && firedKey !== dateKey) {
-      firedKey = dateKey;
-      beep();
+    if (soundEnabled) {
+      for (const item of activeSchedule()) {
+        const eventDate = dateAt(item[0], 0);
+        const target = alarmAt(eventDate);
+        const delta = now.getTime() - target.getTime();
+        const dateKey = target.toISOString() + "|" + dayEl.value + "|" + dutyEl.value + "|" + markEl.value;
+        if (delta >= 0 && delta < 2000 && firedKey !== dateKey) {
+          firedKey = dateKey;
+          beep();
+          break;
+        }
+      }
     }
     if (now.getSeconds() % 10 === 0) renderList();
   }
