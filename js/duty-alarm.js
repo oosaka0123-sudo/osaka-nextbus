@@ -81,7 +81,8 @@
 
   const dayEl = document.getElementById("alarm-day");
   const dutyGridEl = document.getElementById("alarm-duty-grid");
-  const markEl = document.getElementById("alarm-mark");
+  const soundGridEl = document.getElementById("alarm-sound-grid");
+  const volumeGridEl = document.getElementById("alarm-volume-grid");
   const leadMinutesEl = document.getElementById("alarm-lead-minutes");
   const leadSecondsEl = document.getElementById("alarm-lead-seconds");
   const captionEl = document.getElementById("alarm-caption");
@@ -97,11 +98,12 @@
   let wakeLock = null;
   let firedKey = "";
   let allMode = localStorage.getItem("funamachi-alarm-all") === "true";
+  let currentSound = localStorage.getItem("funamachi-alarm-sound") || "beep";
+  let currentVolume = localStorage.getItem("funamachi-alarm-volume") || "medium";
 
   const savedDay = localStorage.getItem("funamachi-alarm-day");
   const today = new Date().getDay();
   dayEl.value = savedDay || ((today === 0 || today === 6) ? "holiday" : "weekday");
-  markEl.value = localStorage.getItem("funamachi-alarm-mark") || "both";
   leadMinutesEl.value = localStorage.getItem("funamachi-alarm-lead-minutes") || "0";
   leadSecondsEl.value = localStorage.getItem("funamachi-alarm-lead-seconds") || "30";
 
@@ -177,13 +179,8 @@
     syncDutyButtons();
   }
 
-  function filterMarks(rows) {
-    if (markEl.value === "both") return rows;
-    return rows.filter((item) => item[1] === markEl.value);
-  }
-
   function activeSchedule() {
-    if (!allMode) return filterMarks(schedules[dayEl.value][currentDuty] || []);
+    if (!allMode) return schedules[dayEl.value][currentDuty] || [];
 
     const merged = [];
     const seen = new Set();
@@ -197,7 +194,7 @@
       });
     });
     merged.sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1]));
-    return filterMarks(merged);
+    return merged;
   }
 
   function dateAt(time, addDay = 0) {
@@ -298,7 +295,7 @@
         const eventDate = dateAt(item[0], 0);
         const target = alarmAt(eventDate);
         const delta = now.getTime() - target.getTime();
-        const dateKey = target.toISOString() + "|" + dayEl.value + "|" + (allMode ? "ALL" : currentDuty) + "|" + markEl.value;
+        const dateKey = target.toISOString() + "|" + dayEl.value + "|" + (allMode ? "ALL" : currentDuty);
         if (delta >= 0 && delta < 2000 && firedKey !== dateKey) {
           firedKey = dateKey;
           beep();
@@ -332,33 +329,74 @@
     return audioContext.state === "running";
   }
 
-  async function beep() {
-    const ready = soundEnabled ? true : await prepareAudio();
-    if (!ready || !audioContext) return;
-    const start = audioContext.currentTime;
+  function volumeLevel() {
+    return currentVolume === "low" ? 0.14 : currentVolume === "high" ? 0.55 : 0.32;
+  }
+
+  function playTone(frequency, startOffset, duration, level) {
+    const start = audioContext.currentTime + startOffset;
     const oscillator = audioContext.createOscillator();
     const gain = audioContext.createGain();
-    oscillator.type = "sine";
-    oscillator.frequency.setValueAtTime(1000, start);
+    oscillator.type = currentSound === "chime" ? "triangle" : "sine";
+    oscillator.frequency.setValueAtTime(frequency, start);
     gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.exponentialRampToValueAtTime(0.35, start + 0.015);
-    gain.gain.setValueAtTime(0.35, start + 0.94);
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + 1.0);
+    gain.gain.exponentialRampToValueAtTime(level, start + 0.012);
+    gain.gain.setValueAtTime(level, Math.max(start + 0.02, start + duration - 0.06));
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
     oscillator.connect(gain);
     gain.connect(audioContext.destination);
     oscillator.start(start);
-    oscillator.stop(start + 1.01);
+    oscillator.stop(start + duration + 0.02);
+  }
+
+  async function beep(preview = false) {
+    const ready = await prepareAudio();
+    if (!ready || !audioContext) return;
+    const level = volumeLevel();
+    const duration = preview ? 0.32 : 0.95;
+
+    if (currentSound === "chime") {
+      playTone(880, 0, duration * 0.55, level);
+      playTone(1320, duration * 0.40, duration * 0.55, level);
+    } else if (currentSound === "double") {
+      playTone(1050, 0, preview ? 0.13 : 0.30, level);
+      playTone(1050, preview ? 0.18 : 0.40, preview ? 0.13 : 0.30, level);
+    } else {
+      playTone(1000, 0, duration, level);
+    }
+  }
+
+  function syncAudioChoiceButtons() {
+    soundGridEl.querySelectorAll("[data-sound]").forEach((button) => {
+      const selected = button.dataset.sound === currentSound;
+      button.classList.toggle("is-selected", selected);
+      button.setAttribute("aria-checked", String(selected));
+    });
+    volumeGridEl.querySelectorAll("[data-volume]").forEach((button) => {
+      const selected = button.dataset.volume === currentVolume;
+      button.classList.toggle("is-selected", selected);
+      button.setAttribute("aria-checked", String(selected));
+    });
+  }
+
+  function chooseSound(sound) {
+    currentSound = ["beep","chime","double"].includes(sound) ? sound : "beep";
+    localStorage.setItem("funamachi-alarm-sound", currentSound);
+    syncAudioChoiceButtons();
+    beep(true);
+  }
+
+  function chooseVolume(volume) {
+    currentVolume = ["low","medium","high"].includes(volume) ? volume : "medium";
+    localStorage.setItem("funamachi-alarm-volume", currentVolume);
+    syncAudioChoiceButtons();
+    beep(true);
   }
 
   dayEl.addEventListener("change", () => {
     localStorage.setItem("funamachi-alarm-day", dayEl.value);
     populateDuties();
     firedKey = "";
-    renderList();
-    updateClock();
-  });
-  markEl.addEventListener("change", () => {
-    localStorage.setItem("funamachi-alarm-mark", markEl.value);
     renderList();
     updateClock();
   });
@@ -379,7 +417,15 @@
     prepareAudio();
     toggleAllMode();
   });
-  testEl.addEventListener("click", beep);
+  soundGridEl.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-sound]");
+    if (button) chooseSound(button.dataset.sound);
+  });
+  volumeGridEl.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-volume]");
+    if (button) chooseVolume(button.dataset.volume);
+  });
+  testEl.addEventListener("click", () => beep(false));
 
   const unlockAudio = () => {
     prepareAudio();
@@ -401,6 +447,7 @@
 
   populateDuties();
   syncLeadUi();
+  syncAudioChoiceButtons();
   prepareAudio();
   renderList();
   updateClock();
