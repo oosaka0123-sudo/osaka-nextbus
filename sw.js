@@ -7,7 +7,7 @@
  * 時刻表の本体と追加分の結合は js/timetable-loader.js が担当するため、
  * Service Worker は各ファイルを独立してキャッシュするだけにする。
  */
-const CACHE_VERSION = "v58";
+const CACHE_VERSION = "v59";
 const CACHE_NAME = `osaka-nextbus-${CACHE_VERSION}`;
 
 const PRECACHE_URLS = [
@@ -17,21 +17,21 @@ const PRECACHE_URLS = [
   "./alarm.html",
   "./crew-alarm.html",
   "./duty-alarm.html",
-  "./duty-alarm.html?v=58",
+  "./duty-alarm.html?v=59",
   "./alarm.html?v=54",
   "./manifest.json",
   "./css/style.css",
   "./css/alarm.css",
   "./css/crew-alarm.css",
   "./css/duty-alarm.css",
-  "./css/duty-alarm.css?v=58",
+  "./css/duty-alarm.css?v=59",
   "./css/alarm.css?v=54",
   "./js/menu.js",
   "./js/feedback.js",
   "./js/alarm.js",
   "./js/crew-alarm.js",
   "./js/duty-alarm.js",
-  "./js/duty-alarm.js?v=58",
+  "./js/duty-alarm.js?v=59",
   "./js/alarm.js?v=54",
   "./js/timetable-loader.js",
   "./js/app.js",

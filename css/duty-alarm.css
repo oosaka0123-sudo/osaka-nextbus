@@ -293,3 +293,27 @@
 .alarm-actions-single {
   grid-template-columns: 1fr;
 }
+
+.alarm-sound-field,
+.alarm-volume-field {
+  grid-column: 1 / -1;
+}
+.alarm-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.alarm-choice-option {
+  min-height: 48px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  color: var(--color-text);
+  background: var(--color-bg);
+  font: inherit;
+  font-weight: 800;
+}
+.alarm-choice-option.is-selected {
+  border-color: var(--color-primary);
+  background: rgba(76,141,255,.18);
+  box-shadow: 0 0 0 2px rgba(76,141,255,.22);
+}
