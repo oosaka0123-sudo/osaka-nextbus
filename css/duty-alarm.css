@@ -262,3 +262,34 @@
   background: rgba(76,141,255,.18);
   box-shadow: 0 0 0 2px rgba(76,141,255,.22);
 }
+
+.alarm-all-option {
+  width: 100%;
+  min-height: 50px;
+  margin-bottom: 8px;
+  border: 1px solid var(--color-primary);
+  border-radius: 10px;
+  color: var(--color-primary-strong);
+  background: rgba(76,141,255,.08);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 900;
+}
+.alarm-all-option.is-selected {
+  color: #081327;
+  background: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(76,141,255,.22);
+}
+.alarm-countdown-card {
+  padding: 20px 14px;
+}
+.alarm-countdown-main {
+  color: var(--color-primary-strong);
+  font-size: clamp(2rem, 10vw, 3.2rem);
+  font-weight: 900;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+.alarm-actions-single {
+  grid-template-columns: 1fr;
+}
