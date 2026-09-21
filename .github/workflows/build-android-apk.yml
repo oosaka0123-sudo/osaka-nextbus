@@ -33,6 +33,12 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Restore stable debug signing key
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: osaka-nextbus-debug-keystore-v1
+
       - name: Build APK
         run: gradle -p android-app assembleDebug --no-daemon
 
