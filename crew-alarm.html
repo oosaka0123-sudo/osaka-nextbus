@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>船町 乗務アラーム | 次バス大阪</title>
+<meta name="description" content="船町6人乗務表の対象時刻30秒前に約1秒だけ鳴らす個人用Webアラーム。" />
+<meta name="theme-color" content="#0b57d0" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<link rel="stylesheet" href="css/style.css" />
+<link rel="stylesheet" href="css/crew-alarm.css" />
+</head>
+<body>
+<div class="app alarm-app">
+  <header class="app-header alarm-header">
+    <a class="back-btn" href="./" aria-label="次バス大阪へ戻る">‹</a>
+    <h1>船町 乗務アラーム</h1>
+  </header>
+
+  <p id="alarm-caption" class="alarm-caption">乗務表の丸印時刻の30秒前に約1秒だけ鳴動</p>
+
+  <section class="alarm-controls" aria-label="アラーム設定">
+    <label class="alarm-field">
+      <span>日区分</span>
+      <select id="alarm-day">
+        <option value="weekday">平日</option>
+        <option value="holiday">休日</option>
+      </select>
+    </label>
+    <div class="alarm-field alarm-duty-field">
+      <span>勤務</span>
+      <select id="alarm-duty" class="alarm-duty-native" aria-label="勤務" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;">
+        <option value="1¹">1¹</option>
+        <option value="1²">1²</option>
+        <option value="1³">1³</option>
+        <option value="4¹">4¹</option>
+        <option value="4²">4²</option>
+        <option value="4³">4³</option>
+        <option value="5¹">5¹</option>
+        <option value="5²">5²</option>
+        <option value="5³">5³</option>
+      </select>
+      <div id="alarm-duty-grid" class="alarm-duty-grid" role="radiogroup" aria-label="勤務を選択">
+        <button type="button" class="alarm-duty-option" data-duty="1¹" role="radio" aria-checked="false">1¹</button>
+        <button type="button" class="alarm-duty-option" data-duty="1²" role="radio" aria-checked="false">1²</button>
+        <button type="button" class="alarm-duty-option" data-duty="1³" role="radio" aria-checked="false">1³</button>
+        <button type="button" class="alarm-duty-option" data-duty="4¹" role="radio" aria-checked="false">4¹</button>
+        <button type="button" class="alarm-duty-option" data-duty="4²" role="radio" aria-checked="false">4²</button>
+        <button type="button" class="alarm-duty-option" data-duty="4³" role="radio" aria-checked="false">4³</button>
+        <button type="button" class="alarm-duty-option" data-duty="5¹" role="radio" aria-checked="false">5¹</button>
+        <button type="button" class="alarm-duty-option" data-duty="5²" role="radio" aria-checked="false">5²</button>
+        <button type="button" class="alarm-duty-option" data-duty="5³" role="radio" aria-checked="false">5³</button>
+      </div>
+    </div>
+    <label class="alarm-field">
+      <span>鳴らす印</span>
+      <select id="alarm-mark">
+        <option value="both">黒丸＋白丸</option>
+        <option value="black">黒丸だけ</option>
+        <option value="white">白丸だけ</option>
+      </select>
+    </label>
+    <div class="alarm-lead" aria-label="鳴らすタイミング">
+      <span class="alarm-lead-title">何分・何秒前に鳴らす</span>
+      <label>
+        <input id="alarm-lead-minutes" type="number" min="0" max="59" inputmode="numeric" value="0" aria-label="何分前" />
+        <span>分前</span>
+      </label>
+      <label>
+        <input id="alarm-lead-seconds" type="number" min="0" max="59" inputmode="numeric" value="30" aria-label="何秒前" />
+        <span>秒前</span>
+      </label>
+    </div>
+  </section>
+
+  <section class="alarm-next" aria-live="polite">
+    <p id="alarm-next-label" class="alarm-next-label">次の対象時刻（30秒前に鳴動）</p>
+    <p id="alarm-next-time" class="alarm-next-time">--:--</p>
+    <p id="alarm-countdown" class="alarm-countdown">設定を読み込み中</p>
+  </section>
+
+  <section class="alarm-actions">
+    <button id="alarm-enable" class="alarm-primary" type="button">音を有効化</button>
+    <button id="alarm-test" class="alarm-secondary" type="button">1秒テスト</button>
+  </section>
+  <p id="alarm-status" class="alarm-status" role="status" aria-live="polite">音声OFF</p>
+
+  <section class="alarm-list-card">
+    <div class="alarm-list-head">
+      <div>
+        <h2>今日の時刻</h2>
+        <p id="alarm-list-summary">--件</p>
+      </div>
+      <div class="alarm-legend" aria-label="凡例">
+        <span><i class="dot dot-white"></i>白丸</span>
+        <span><i class="dot dot-black"></i>黒丸</span>
+      </div>
+    </div>
+    <ol id="alarm-time-list" class="alarm-time-list"></ol>
+  </section>
+
+  <aside class="alarm-note">
+    <strong>Web版の注意</strong>
+    <p>画面OFF・省電力・他アプリ使用中はブラウザが停止して鳴らない場合があります。勤務中はこのページを開いたまま「音を有効化」を押してください。</p>
+  </aside>
+</div>
+<script>
+(() => {
+  const select = document.getElementById("alarm-duty");
+  const grid = document.getElementById("alarm-duty-grid");
+  if (!select || !grid) return;
+
+  const sync = () => {
+    grid.querySelectorAll(".alarm-duty-option").forEach((button) => {
+      const selected = button.dataset.duty === select.value;
+      button.setAttribute("aria-checked", String(selected));
+      button.style.borderColor = selected ? "#4c8dff" : "";
+      button.style.background = selected ? "rgba(76,141,255,.18)" : "";
+    });
+  };
+
+  const saved = localStorage.getItem("funamachi-alarm-duty");
+  if (saved && Array.from(select.options).some((o) => o.value === saved)) select.value = saved;
+
+  grid.addEventListener("click", (event) => {
+    const button = event.target.closest(".alarm-duty-option");
+    if (!button) return;
+    select.value = button.dataset.duty;
+    localStorage.setItem("funamachi-alarm-duty", select.value);
+    select.dispatchEvent(new Event("change", { bubbles: true }));
+    sync();
+  });
+
+  select.addEventListener("change", sync);
+  sync();
+})();
+</script>
+<script src="js/crew-alarm.js"></script>
+</body>
+</html>
