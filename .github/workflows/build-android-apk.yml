@@ -45,6 +45,23 @@ jobs:
       - name: Prepare download file
         run: cp android-app/app/build/outputs/apk/debug/app-debug.apk osaka-nextbus.apk
 
+      - name: Verify APK signature and package metadata
+        run: |
+          "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" verify --verbose --print-certs osaka-nextbus.apk
+          "$ANDROID_SDK_ROOT/build-tools/35.0.0/aapt" dump badging osaka-nextbus.apk
+          unzip -t osaka-nextbus.apk
+
+      - name: Install APK on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          script: |
+            adb install -r osaka-nextbus.apk
+            adb shell pm path net.rss7.osakanextbus
+            adb shell am start -W -n net.rss7.osakanextbus/.MainActivity
+
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
