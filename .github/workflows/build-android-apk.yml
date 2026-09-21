@@ -51,16 +51,26 @@ jobs:
           "$ANDROID_SDK_ROOT/build-tools/35.0.0/aapt" dump badging osaka-nextbus.apk
           unzip -t osaka-nextbus.apk
 
+      - name: Enable KVM permissions
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm || true
+
       - name: Install APK on Android emulator
+        timeout-minutes: 12
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          api-level: 29
           arch: x86_64
           profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: |
             adb install -r osaka-nextbus.apk
             adb shell pm path net.rss7.osakanextbus
             adb shell am start -W -n net.rss7.osakanextbus/.MainActivity
+            adb shell dumpsys package net.rss7.osakanextbus | grep versionName
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
