@@ -85,19 +85,18 @@
   const leadMinutesEl = document.getElementById("alarm-lead-minutes");
   const leadSecondsEl = document.getElementById("alarm-lead-seconds");
   const captionEl = document.getElementById("alarm-caption");
-  const nextLabelEl = document.getElementById("alarm-next-label");
-  const nextEl = document.getElementById("alarm-next-time");
+  const allEl = document.getElementById("alarm-all");
   const countdownEl = document.getElementById("alarm-countdown");
-  const enableEl = document.getElementById("alarm-enable");
   const testEl = document.getElementById("alarm-test");
   const statusEl = document.getElementById("alarm-status");
   const listEl = document.getElementById("alarm-time-list");
   const summaryEl = document.getElementById("alarm-list-summary");
 
   let audioContext = null;
-  let soundEnabled = false;
+  let soundEnabled = true;
   let wakeLock = null;
   let firedKey = "";
+  let allMode = localStorage.getItem("funamachi-alarm-all") === "true";
 
   const savedDay = localStorage.getItem("funamachi-alarm-day");
   const today = new Date().getDay();
@@ -131,8 +130,10 @@
   }
 
   function syncDutyButtons() {
+    allEl.setAttribute("aria-pressed", String(allMode));
+    allEl.classList.toggle("is-selected", allMode);
     dutyGridEl.querySelectorAll(".alarm-duty-option").forEach((button) => {
-      const selected = button.dataset.duty === currentDuty;
+      const selected = !allMode && button.dataset.duty === currentDuty;
       button.setAttribute("aria-checked", String(selected));
       button.tabIndex = selected ? 0 : -1;
       button.classList.toggle("is-selected", selected);
@@ -140,9 +141,21 @@
   }
 
   function setDuty(duty) {
+    allMode = false;
+    localStorage.setItem("funamachi-alarm-all", "false");
     currentDuty = normalizeDutyForDay(duty);
     localStorage.setItem("funamachi-alarm-duty", currentDuty);
     syncDutyButtons();
+    firedKey = "";
+    renderList();
+    updateClock();
+  }
+
+  function toggleAllMode() {
+    allMode = !allMode;
+    localStorage.setItem("funamachi-alarm-all", String(allMode));
+    syncDutyButtons();
+    firedKey = "";
     renderList();
     updateClock();
   }
@@ -164,10 +177,27 @@
     syncDutyButtons();
   }
 
+  function filterMarks(rows) {
+    if (markEl.value === "both") return rows;
+    return rows.filter((item) => item[1] === markEl.value);
+  }
+
   function activeSchedule() {
-    const all = schedules[dayEl.value][currentDuty] || [];
-    if (markEl.value === "both") return all;
-    return all.filter((item) => item[1] === markEl.value);
+    if (!allMode) return filterMarks(schedules[dayEl.value][currentDuty] || []);
+
+    const merged = [];
+    const seen = new Set();
+    dutiesForCurrentDay().forEach((duty) => {
+      (schedules[dayEl.value][duty] || []).forEach(([time, mark]) => {
+        const key = time + "|" + mark;
+        if (!seen.has(key)) {
+          seen.add(key);
+          merged.push([time, mark]);
+        }
+      });
+    });
+    merged.sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1]));
+    return filterMarks(merged);
   }
 
   function dateAt(time, addDay = 0) {
@@ -211,7 +241,6 @@
     localStorage.setItem("funamachi-alarm-lead-seconds", String(seconds));
     const text = leadText();
     captionEl.textContent = "乗務表の丸印時刻の" + text + "に約1秒だけ鳴動";
-    nextLabelEl.textContent = "次の対象時刻（" + text + "に鳴動）";
   }
 
   function alarmAt(eventDate) {
@@ -256,23 +285,20 @@
     const now = new Date();
     const next = findNext(now);
     if (!next) {
-      nextEl.textContent = "--:--";
-      countdownEl.textContent = "この日区分には " + currentDuty + " の時刻がありません";
+      countdownEl.textContent = "対象時刻がありません";
       return;
     }
-    nextEl.textContent = next.item[0] + (next.tomorrow ? " 明日" : "");
     const seconds = Math.max(0, Math.floor((next.alarmDate - now) / 1000));
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
+    const totalMinutes = Math.floor(seconds / 60);
     const s = seconds % 60;
-    countdownEl.textContent = leadText() + "に鳴動・あと " + h + "時間 " + m + "分 " + s + "秒";
+    countdownEl.textContent = "残り " + totalMinutes + "分 " + s + "秒";
 
     if (soundEnabled) {
       for (const item of activeSchedule()) {
         const eventDate = dateAt(item[0], 0);
         const target = alarmAt(eventDate);
         const delta = now.getTime() - target.getTime();
-        const dateKey = target.toISOString() + "|" + dayEl.value + "|" + currentDuty + "|" + markEl.value;
+        const dateKey = target.toISOString() + "|" + dayEl.value + "|" + (allMode ? "ALL" : currentDuty) + "|" + markEl.value;
         if (delta >= 0 && delta < 2000 && firedKey !== dateKey) {
           firedKey = dateKey;
           beep();
@@ -290,20 +316,20 @@
       return false;
     }
     if (!audioContext) audioContext = new Ctx();
-    if (audioContext.state === "suspended") await audioContext.resume();
+    try {
+      if (audioContext.state === "suspended") await audioContext.resume();
+    } catch (_) {}
     soundEnabled = true;
-    enableEl.textContent = "音声ON";
-    enableEl.classList.add("is-on");
-    statusEl.textContent = "音声ON・ページを開いたまま使用";
+    statusEl.textContent = audioContext.state === "running"
+      ? "アプリ起動中は自動監視"
+      : "最初の画面操作後から自動で鳴動";
     try {
       if ("wakeLock" in navigator && document.visibilityState === "visible" && !wakeLock) {
         wakeLock = await navigator.wakeLock.request("screen");
         wakeLock.addEventListener("release", () => { wakeLock = null; });
       }
-    } catch (_) {
-      statusEl.textContent = "音声ON（画面スリープ防止は利用不可）";
-    }
-    return true;
+    } catch (_) {}
+    return audioContext.state === "running";
   }
 
   async function beep() {
@@ -349,8 +375,19 @@
       updateClock();
     });
   });
-  enableEl.addEventListener("click", prepareAudio);
+  allEl.addEventListener("click", () => {
+    prepareAudio();
+    toggleAllMode();
+  });
   testEl.addEventListener("click", beep);
+
+  const unlockAudio = () => {
+    prepareAudio();
+    window.removeEventListener("pointerdown", unlockAudio, true);
+    window.removeEventListener("keydown", unlockAudio, true);
+  };
+  window.addEventListener("pointerdown", unlockAudio, true);
+  window.addEventListener("keydown", unlockAudio, true);
 
   document.addEventListener("visibilitychange", async () => {
     if (document.visibilityState === "visible" && soundEnabled && "wakeLock" in navigator && !wakeLock) {
@@ -364,6 +401,7 @@
 
   populateDuties();
   syncLeadUi();
+  prepareAudio();
   renderList();
   updateClock();
   setInterval(updateClock, 250);
