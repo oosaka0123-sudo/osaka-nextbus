@@ -21,7 +21,7 @@
     <h1>船町 乗務アラーム</h1>
   </header>
 
-  <p class="alarm-caption">乗務表の丸印時刻の30秒前に約1秒だけ鳴動</p>
+  <p id="alarm-caption" class="alarm-caption">乗務表の丸印時刻の30秒前に約1秒だけ鳴動</p>
 
   <section class="alarm-controls" aria-label="アラーム設定">
     <label class="alarm-field">
@@ -43,10 +43,21 @@
         <option value="white">白丸だけ</option>
       </select>
     </label>
+    <div class="alarm-lead" aria-label="鳴らすタイミング">
+      <span class="alarm-lead-title">何分・何秒前に鳴らす</span>
+      <label>
+        <input id="alarm-lead-minutes" type="number" min="0" max="59" inputmode="numeric" value="0" aria-label="何分前" />
+        <span>分前</span>
+      </label>
+      <label>
+        <input id="alarm-lead-seconds" type="number" min="0" max="59" inputmode="numeric" value="30" aria-label="何秒前" />
+        <span>秒前</span>
+      </label>
+    </div>
   </section>
 
   <section class="alarm-next" aria-live="polite">
-    <p class="alarm-next-label">次の対象時刻（30秒前に鳴動）</p>
+    <p id="alarm-next-label" class="alarm-next-label">次の対象時刻（30秒前に鳴動）</p>
     <p id="alarm-next-time" class="alarm-next-time">--:--</p>
     <p id="alarm-countdown" class="alarm-countdown">設定を読み込み中</p>
   </section>
