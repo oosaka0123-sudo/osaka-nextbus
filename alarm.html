@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>船町 乗務アラーム | 次バス大阪</title>
+<meta name="description" content="船町6人乗務表の時刻に約1秒だけ鳴らす個人用Webアラーム。" />
+<meta name="theme-color" content="#0b57d0" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<link rel="stylesheet" href="css/style.css" />
+<link rel="stylesheet" href="css/alarm.css" />
+</head>
+<body>
+<div class="app alarm-app">
+  <header class="app-header alarm-header">
+    <a class="back-btn" href="./" aria-label="次バス大阪へ戻る">‹</a>
+    <h1>船町 乗務アラーム</h1>
+  </header>
+
+  <p class="alarm-caption">乗務表の丸印時刻に約1秒だけ鳴動</p>
+
+  <section class="alarm-controls" aria-label="アラーム設定">
+    <label class="alarm-field">
+      <span>日区分</span>
+      <select id="alarm-day">
+        <option value="weekday">平日</option>
+        <option value="holiday">休日</option>
+      </select>
+    </label>
+    <label class="alarm-field">
+      <span>勤務</span>
+      <select id="alarm-duty"></select>
+    </label>
+    <label class="alarm-field">
+      <span>鳴らす印</span>
+      <select id="alarm-mark">
+        <option value="both">黒丸＋白丸</option>
+        <option value="black">黒丸だけ</option>
+        <option value="white">白丸だけ</option>
+      </select>
+    </label>
+  </section>
+
+  <section class="alarm-next" aria-live="polite">
+    <p class="alarm-next-label">次に鳴る時刻</p>
+    <p id="alarm-next-time" class="alarm-next-time">--:--</p>
+    <p id="alarm-countdown" class="alarm-countdown">設定を読み込み中</p>
+  </section>
+
+  <section class="alarm-actions">
+    <button id="alarm-enable" class="alarm-primary" type="button">音を有効化</button>
+    <button id="alarm-test" class="alarm-secondary" type="button">1秒テスト</button>
+  </section>
+  <p id="alarm-status" class="alarm-status" role="status" aria-live="polite">音声OFF</p>
+
+  <section class="alarm-list-card">
+    <div class="alarm-list-head">
+      <div>
+        <h2>今日の時刻</h2>
+        <p id="alarm-list-summary">--件</p>
+      </div>
+      <div class="alarm-legend" aria-label="凡例">
+        <span><i class="dot dot-white"></i>白丸</span>
+        <span><i class="dot dot-black"></i>黒丸</span>
+      </div>
+    </div>
+    <ol id="alarm-time-list" class="alarm-time-list"></ol>
+  </section>
+
+  <aside class="alarm-note">
+    <strong>Web版の注意</strong>
+    <p>画面OFF・省電力・他アプリ使用中はブラウザが停止して鳴らない場合があります。勤務中はこのページを開いたまま「音を有効化」を押してください。</p>
+  </aside>
+</div>
+<script src="js/alarm.js"></script>
+</body>
+</html>

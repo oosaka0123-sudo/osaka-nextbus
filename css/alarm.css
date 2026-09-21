@@ -1,0 +1,170 @@
+.alarm-app {
+  padding-bottom: calc(var(--safe-bottom) + 28px);
+  gap: 12px;
+}
+.alarm-header { min-height: 44px; }
+.alarm-caption {
+  margin: -8px 0 2px;
+  text-align: center;
+  color: var(--color-text-dim);
+  font-size: .78rem;
+}
+.alarm-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.alarm-field {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+}
+.alarm-field:last-child { grid-column: 1 / -1; }
+.alarm-field span {
+  color: var(--color-text-dim);
+  font-size: .72rem;
+  font-weight: 700;
+}
+.alarm-field select {
+  width: 100%;
+  min-width: 0;
+  padding: 5px 24px 5px 0;
+  border: 0;
+  color: var(--color-text);
+  background: transparent;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 800;
+}
+.alarm-field:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(76,141,255,.25);
+}
+.alarm-next {
+  padding: 18px 14px;
+  text-align: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+}
+.alarm-next-label,
+.alarm-countdown { margin: 0; color: var(--color-text-dim); }
+.alarm-next-label { font-size: .8rem; }
+.alarm-next-time {
+  margin: 5px 0 2px;
+  color: var(--color-primary-strong);
+  font-size: clamp(3rem, 15vw, 4.4rem);
+  font-weight: 900;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.alarm-countdown { font-size: .82rem; font-variant-numeric: tabular-nums; }
+.alarm-actions {
+  display: grid;
+  grid-template-columns: 1.25fr .75fr;
+  gap: 8px;
+}
+.alarm-primary,
+.alarm-secondary {
+  min-height: 52px;
+  border-radius: 12px;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.alarm-primary {
+  color: #081327;
+  background: var(--color-primary);
+  border: 1px solid var(--color-primary);
+}
+.alarm-primary.is-on {
+  color: var(--color-primary-strong);
+  background: rgba(76,141,255,.18);
+}
+.alarm-secondary {
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+.alarm-status {
+  min-height: 1.25em;
+  margin: -5px 0 0;
+  text-align: center;
+  color: var(--color-text-dim);
+  font-size: .75rem;
+}
+.alarm-list-card {
+  padding: 15px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+}
+.alarm-list-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 11px;
+  border-bottom: 1px solid var(--color-border);
+}
+.alarm-list-head h2 { margin: 0; font-size: .95rem; }
+.alarm-list-head p { margin: 2px 0 0; color: var(--color-text-dim); font-size: .7rem; }
+.alarm-legend {
+  display: flex;
+  gap: 10px;
+  color: var(--color-text-dim);
+  font-size: .7rem;
+  white-space: nowrap;
+}
+.dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 4px;
+  vertical-align: -1px;
+  border-radius: 50%;
+}
+.dot-black { background: var(--color-text); }
+.dot-white { background: transparent; border: 1.5px solid var(--color-text); }
+.alarm-time-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  gap: 8px 6px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.alarm-time-item {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 36px;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  font-size: .83rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.alarm-time-item.is-past { opacity: .4; }
+.alarm-time-item.is-next {
+  border-color: var(--color-primary);
+  background: rgba(76,141,255,.12);
+}
+.alarm-note {
+  padding: 13px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  color: var(--color-text-dim);
+}
+.alarm-note strong { color: var(--color-text); font-size: .82rem; }
+.alarm-note p { margin: 5px 0 0; font-size: .76rem; line-height: 1.55; }
+@media (max-width: 350px) {
+  .alarm-time-list { grid-template-columns: repeat(3, minmax(0,1fr)); }
+}
