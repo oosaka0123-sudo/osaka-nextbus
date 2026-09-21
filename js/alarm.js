@@ -106,16 +106,18 @@
   leadMinutesEl.value = localStorage.getItem("funamachi-alarm-lead-minutes") || "0";
   leadSecondsEl.value = localStorage.getItem("funamachi-alarm-lead-seconds") || "30";
 
+  const allDuties = ["1¹","1²","1³","4¹","4²","4³","5¹","5²","5³"];
+
   function populateDuties() {
     const previous = localStorage.getItem("funamachi-alarm-duty");
     dutyEl.textContent = "";
-    Object.keys(schedules[dayEl.value]).forEach((duty) => {
+    allDuties.forEach((duty) => {
       const option = document.createElement("option");
       option.value = duty;
       option.textContent = duty;
       dutyEl.appendChild(option);
     });
-    if (previous && schedules[dayEl.value][previous]) dutyEl.value = previous;
+    dutyEl.value = previous && allDuties.includes(previous) ? previous : "1¹";
     localStorage.setItem("funamachi-alarm-duty", dutyEl.value);
   }
 
@@ -212,7 +214,7 @@
     const next = findNext(now);
     if (!next) {
       nextEl.textContent = "--:--";
-      countdownEl.textContent = "対象時刻がありません";
+      countdownEl.textContent = "この日区分には " + dutyEl.value + " の時刻がありません";
       return;
     }
     nextEl.textContent = next.item[0] + (next.tomorrow ? " 明日" : "");
