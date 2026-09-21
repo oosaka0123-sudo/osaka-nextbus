@@ -2,14 +2,21 @@ package net.rss7.osakanextbus;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.DownloadManager;
+import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.os.Environment;
+import android.net.Uri;
 import android.view.WindowManager;
+import android.webkit.CookieManager;
 import android.webkit.GeolocationPermissions;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.webkit.URLUtil;
 import android.webkit.WebViewClient;
+import android.widget.Toast;
 
 public class MainActivity extends Activity {
     private static final int LOCATION_REQUEST_CODE = 1001;
@@ -36,6 +43,43 @@ public class MainActivity extends Activity {
         settings.setUseWideViewPort(true);
 
         webView.setWebViewClient(new WebViewClient());
+        webView.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> {
+            try {
+                DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+                String cookies = CookieManager.getInstance().getCookie(url);
+                if (cookies != null && !cookies.isEmpty()) {
+                    request.addRequestHeader("Cookie", cookies);
+                }
+                if (userAgent != null && !userAgent.isEmpty()) {
+                    request.addRequestHeader("User-Agent", userAgent);
+                }
+                if (mimeType != null && !mimeType.isEmpty()) {
+                    request.setMimeType(mimeType);
+                }
+
+                String fileName = URLUtil.guessFileName(url, contentDisposition, mimeType);
+                if (fileName == null || fileName.isEmpty()) {
+                    fileName = "osaka-nextbus.apk";
+                }
+
+                request.setTitle(fileName);
+                request.setDescription("次バス大阪をダウンロード中");
+                request.setNotificationVisibility(
+                        DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                request.setDestinationInExternalPublicDir(
+                        Environment.DIRECTORY_DOWNLOADS, fileName);
+
+                DownloadManager manager =
+                        (DownloadManager) getSystemService(Context.DOWNLOAD_SERVICE);
+                if (manager != null) {
+                    manager.enqueue(request);
+                    Toast.makeText(this, "ダウンロードを開始しました", Toast.LENGTH_SHORT).show();
+                }
+            } catch (Exception e) {
+                Toast.makeText(this, "ダウンロードを開始できませんでした", Toast.LENGTH_LONG).show();
+            }
+        });
+
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onGeolocationPermissionsShowPrompt(
