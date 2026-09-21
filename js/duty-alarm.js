@@ -106,8 +106,29 @@
   leadMinutesEl.value = localStorage.getItem("funamachi-alarm-lead-minutes") || "0";
   leadSecondsEl.value = localStorage.getItem("funamachi-alarm-lead-seconds") || "30";
 
-  const allDuties = ["1¹","1²","1³","4¹","4²","4³","5¹","5²","5³"];
-  let currentDuty = allDuties.includes(localStorage.getItem("funamachi-alarm-duty")) ? localStorage.getItem("funamachi-alarm-duty") : "1¹";
+  const dutiesByDay = {
+    weekday: ["1¹","1²","1³","5¹","5²","5³"],
+    holiday: ["1¹","1²","1³","4¹","4²","4³"]
+  };
+  const allDuties = [...new Set([...dutiesByDay.weekday, ...dutiesByDay.holiday])];
+  let currentDuty = allDuties.includes(localStorage.getItem("funamachi-alarm-duty"))
+    ? localStorage.getItem("funamachi-alarm-duty")
+    : "1¹";
+
+  function dutiesForCurrentDay() {
+    return dutiesByDay[dayEl.value] || dutiesByDay.weekday;
+  }
+
+  function normalizeDutyForDay(duty) {
+    const allowed = dutiesForCurrentDay();
+    if (allowed.includes(duty)) return duty;
+
+    const suffix = duty.slice(-1);
+    const counterpart = dayEl.value === "holiday" ? "4" + suffix : "5" + suffix;
+    if (allowed.includes(counterpart)) return counterpart;
+
+    return "1¹";
+  }
 
   function syncDutyButtons() {
     dutyGridEl.querySelectorAll(".alarm-duty-option").forEach((button) => {
@@ -119,7 +140,7 @@
   }
 
   function setDuty(duty) {
-    currentDuty = allDuties.includes(duty) ? duty : "1¹";
+    currentDuty = normalizeDutyForDay(duty);
     localStorage.setItem("funamachi-alarm-duty", currentDuty);
     syncDutyButtons();
     renderList();
@@ -127,8 +148,10 @@
   }
 
   function populateDuties() {
+    currentDuty = normalizeDutyForDay(currentDuty);
+    localStorage.setItem("funamachi-alarm-duty", currentDuty);
     dutyGridEl.textContent = "";
-    allDuties.forEach((duty) => {
+    dutiesForCurrentDay().forEach((duty) => {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "alarm-duty-option";
@@ -303,6 +326,8 @@
 
   dayEl.addEventListener("change", () => {
     localStorage.setItem("funamachi-alarm-day", dayEl.value);
+    populateDuties();
+    firedKey = "";
     renderList();
     updateClock();
   });
