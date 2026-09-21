@@ -82,6 +82,10 @@
   const dayEl = document.getElementById("alarm-day");
   const dutyEl = document.getElementById("alarm-duty");
   const markEl = document.getElementById("alarm-mark");
+  const leadMinutesEl = document.getElementById("alarm-lead-minutes");
+  const leadSecondsEl = document.getElementById("alarm-lead-seconds");
+  const captionEl = document.getElementById("alarm-caption");
+  const nextLabelEl = document.getElementById("alarm-next-label");
   const nextEl = document.getElementById("alarm-next-time");
   const countdownEl = document.getElementById("alarm-countdown");
   const enableEl = document.getElementById("alarm-enable");
@@ -94,12 +98,13 @@
   let soundEnabled = false;
   let wakeLock = null;
   let firedKey = "";
-  const ALARM_LEAD_MS = 30 * 1000;
 
   const savedDay = localStorage.getItem("funamachi-alarm-day");
   const today = new Date().getDay();
   dayEl.value = savedDay || ((today === 0 || today === 6) ? "holiday" : "weekday");
   markEl.value = localStorage.getItem("funamachi-alarm-mark") || "both";
+  leadMinutesEl.value = localStorage.getItem("funamachi-alarm-lead-minutes") || "0";
+  leadSecondsEl.value = localStorage.getItem("funamachi-alarm-lead-seconds") || "30";
 
   function populateDuties() {
     const previous = localStorage.getItem("funamachi-alarm-duty");
@@ -128,8 +133,44 @@
     return d;
   }
 
+  function clampInt(value, min, max) {
+    const n = Number.parseInt(value, 10);
+    if (!Number.isFinite(n)) return min;
+    return Math.min(max, Math.max(min, n));
+  }
+
+  function leadParts() {
+    const minutes = clampInt(leadMinutesEl.value, 0, 59);
+    const seconds = clampInt(leadSecondsEl.value, 0, 59);
+    return { minutes, seconds };
+  }
+
+  function leadMs() {
+    const { minutes, seconds } = leadParts();
+    return (minutes * 60 + seconds) * 1000;
+  }
+
+  function leadText() {
+    const { minutes, seconds } = leadParts();
+    if (minutes === 0 && seconds === 0) return "時刻ちょうど";
+    if (minutes === 0) return seconds + "秒前";
+    if (seconds === 0) return minutes + "分前";
+    return minutes + "分" + seconds + "秒前";
+  }
+
+  function syncLeadUi() {
+    const { minutes, seconds } = leadParts();
+    leadMinutesEl.value = String(minutes);
+    leadSecondsEl.value = String(seconds);
+    localStorage.setItem("funamachi-alarm-lead-minutes", String(minutes));
+    localStorage.setItem("funamachi-alarm-lead-seconds", String(seconds));
+    const text = leadText();
+    captionEl.textContent = "乗務表の丸印時刻の" + text + "に約1秒だけ鳴動";
+    nextLabelEl.textContent = "次の対象時刻（" + text + "に鳴動）";
+  }
+
   function alarmAt(eventDate) {
-    return new Date(eventDate.getTime() - ALARM_LEAD_MS);
+    return new Date(eventDate.getTime() - leadMs());
   }
 
   function findNext(now = new Date()) {
@@ -179,7 +220,7 @@
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
     const s = seconds % 60;
-    countdownEl.textContent = "30秒前に鳴動・あと " + h + "時間 " + m + "分 " + s + "秒";
+    countdownEl.textContent = leadText() + "に鳴動・あと " + h + "時間 " + m + "分 " + s + "秒";
 
     if (soundEnabled) {
       for (const item of activeSchedule()) {
@@ -254,6 +295,19 @@
     renderList();
     updateClock();
   });
+  [leadMinutesEl, leadSecondsEl].forEach((input) => {
+    input.addEventListener("change", () => {
+      syncLeadUi();
+      firedKey = "";
+      renderList();
+      updateClock();
+    });
+    input.addEventListener("input", () => {
+      syncLeadUi();
+      renderList();
+      updateClock();
+    });
+  });
   enableEl.addEventListener("click", prepareAudio);
   testEl.addEventListener("click", beep);
 
@@ -268,6 +322,7 @@
   }
 
   populateDuties();
+  syncLeadUi();
   renderList();
   updateClock();
   setInterval(updateClock, 250);
