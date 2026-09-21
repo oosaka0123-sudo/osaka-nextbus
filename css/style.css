@@ -646,3 +646,66 @@ body.menu-open {
   margin: 0;
   font-size: 0.9rem;
 }
+
+
+/* Pull-to-refresh onboarding hint */
+.pull-refresh-hint {
+  position: fixed;
+  top: calc(var(--safe-top) + 62px);
+  left: 50%;
+  z-index: 35;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 10px 16px;
+  color: var(--color-primary-strong);
+  background: rgba(18, 26, 43, 0.96);
+  border: 1px solid rgba(76, 141, 255, 0.55);
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  animation: pull-refresh-hint 4.8s ease-out 0.35s forwards;
+}
+
+@keyframes pull-refresh-hint {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+  }
+  12%,
+  52% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+    visibility: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pull-refresh-hint {
+    animation-duration: 3.2s;
+  }
+
+  @keyframes pull-refresh-hint {
+    0%,
+    15%,
+    60% {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, 0);
+      visibility: hidden;
+    }
+  }
+}
