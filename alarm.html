@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
 <title>船町 乗務アラーム | 次バス大阪</title>
-<meta name="description" content="船町6人乗務表の時刻に約1秒だけ鳴らす個人用Webアラーム。" />
+<meta name="description" content="船町6人乗務表の対象時刻30秒前に約1秒だけ鳴らす個人用Webアラーム。" />
 <meta name="theme-color" content="#0b57d0" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -21,7 +21,7 @@
     <h1>船町 乗務アラーム</h1>
   </header>
 
-  <p class="alarm-caption">乗務表の丸印時刻に約1秒だけ鳴動</p>
+  <p class="alarm-caption">乗務表の丸印時刻の30秒前に約1秒だけ鳴動</p>
 
   <section class="alarm-controls" aria-label="アラーム設定">
     <label class="alarm-field">
@@ -46,7 +46,7 @@
   </section>
 
   <section class="alarm-next" aria-live="polite">
-    <p class="alarm-next-label">次に鳴る時刻</p>
+    <p class="alarm-next-label">次の対象時刻（30秒前に鳴動）</p>
     <p id="alarm-next-time" class="alarm-next-time">--:--</p>
     <p id="alarm-countdown" class="alarm-countdown">設定を読み込み中</p>
   </section>
