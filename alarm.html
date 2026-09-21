@@ -31,10 +31,11 @@
         <option value="holiday">休日</option>
       </select>
     </label>
-    <label class="alarm-field">
+    <div class="alarm-field alarm-duty-field">
       <span>勤務</span>
-      <select id="alarm-duty"></select>
-    </label>
+      <select id="alarm-duty" class="alarm-duty-native" aria-label="勤務"></select>
+      <div id="alarm-duty-grid" class="alarm-duty-grid" role="radiogroup" aria-label="勤務を選択"></div>
+    </div>
     <label class="alarm-field">
       <span>鳴らす印</span>
       <select id="alarm-mark">

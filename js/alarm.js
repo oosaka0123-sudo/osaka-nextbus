@@ -81,6 +81,7 @@
 
   const dayEl = document.getElementById("alarm-day");
   const dutyEl = document.getElementById("alarm-duty");
+  const dutyGridEl = document.getElementById("alarm-duty-grid");
   const markEl = document.getElementById("alarm-mark");
   const leadMinutesEl = document.getElementById("alarm-lead-minutes");
   const leadSecondsEl = document.getElementById("alarm-lead-seconds");
@@ -108,17 +109,42 @@
 
   const allDuties = ["1¹","1²","1³","4¹","4²","4³","5¹","5²","5³"];
 
+  function syncDutyButtons() {
+    dutyGridEl.querySelectorAll(".alarm-duty-option").forEach((button) => {
+      const selected = button.dataset.duty === dutyEl.value;
+      button.setAttribute("aria-checked", String(selected));
+      button.tabIndex = selected ? 0 : -1;
+    });
+  }
+
   function populateDuties() {
     const previous = localStorage.getItem("funamachi-alarm-duty");
     dutyEl.textContent = "";
+    dutyGridEl.textContent = "";
     allDuties.forEach((duty) => {
       const option = document.createElement("option");
       option.value = duty;
       option.textContent = duty;
       dutyEl.appendChild(option);
+
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "alarm-duty-option";
+      button.dataset.duty = duty;
+      button.textContent = duty;
+      button.setAttribute("role", "radio");
+      button.addEventListener("click", () => {
+        dutyEl.value = duty;
+        localStorage.setItem("funamachi-alarm-duty", duty);
+        syncDutyButtons();
+        renderList();
+        updateClock();
+      });
+      dutyGridEl.appendChild(button);
     });
     dutyEl.value = previous && allDuties.includes(previous) ? previous : "1¹";
     localStorage.setItem("funamachi-alarm-duty", dutyEl.value);
+    syncDutyButtons();
   }
 
   function activeSchedule() {
@@ -289,6 +315,7 @@
   });
   dutyEl.addEventListener("change", () => {
     localStorage.setItem("funamachi-alarm-duty", dutyEl.value);
+    syncDutyButtons();
     renderList();
     updateClock();
   });
