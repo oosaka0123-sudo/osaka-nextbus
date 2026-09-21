@@ -1,0 +1,1584 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<title>船町 乗務アラーム | 次バス大阪</title>
+<meta name="description" content="船町乗務アラーム v60。音色・音量選択、全て鳴らす、残り時間表示対応。" />
+<meta name="theme-color" content="#0b57d0" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<style>
+:root {
+  --color-bg: #0b1220;
+  --color-surface: #121a2b;
+  --color-primary: #4c8dff;
+  --color-primary-strong: #eaf1ff;
+  --color-text: #f4f7ff;
+  --color-text-dim: #9aa8c7;
+  --color-accent: #ffc107;
+  --color-border: #223050;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: "Hiragino Sans", "Noto Sans JP", "Yu Gothic", system-ui, -apple-system, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: contain;
+}
+
+.app {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: calc(var(--safe-top) + 16px) 16px calc(var(--safe-bottom) + 88px);
+  max-width: 480px;
+  margin: 0 auto;
+  gap: 14px;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  position: relative;
+}
+
+.app-header h1 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+.last-updated {
+  margin: -10px 0 0;
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--color-text-dim);
+}
+
+.demo-badge {
+  position: absolute;
+  right: 0;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #1a1200;
+  background: var(--color-accent);
+  padding: 2px 6px;
+  border-radius: 999px;
+  letter-spacing: 0.05em;
+}
+
+.selectors {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stop-select-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nearby-label {
+  margin: 0 0 0 4px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  letter-spacing: 0.03em;
+}
+
+.selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.selector-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.selector select {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  background: transparent;
+  color: var(--color-text);
+  border: none;
+  font-size: 1.05rem;
+  font-weight: 600;
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 4px 20px 4px 2px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--color-text-dim) 50%), linear-gradient(135deg, var(--color-text-dim) 50%, transparent 50%);
+  background-position: right 5px top 55%, right 0px top 55%;
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selector select:disabled {
+  color: var(--color-text-dim);
+  opacity: 0.75;
+}
+
+.selector select:focus {
+  outline: none;
+}
+
+.selector:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(76, 141, 255, 0.35);
+}
+
+.status-message {
+  margin: 0;
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--color-text-dim);
+}
+
+.board {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  padding: 20px 16px;
+  gap: 14px;
+  text-align: center;
+}
+
+.board-label {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-dim);
+  letter-spacing: 0.05em;
+}
+
+.overview-board {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.overview-board[hidden] {
+  display: none;
+}
+
+.overview-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+  text-align: left;
+}
+
+.overview-item {
+  padding: 12px 2px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.overview-item:last-child {
+  border-bottom: none;
+}
+
+.overview-item-top {
+  display: grid;
+  grid-template-columns: minmax(58px, auto) 72px 1fr;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.overview-route {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 54px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(76, 141, 255, 0.16);
+  color: var(--color-primary-strong);
+  font-size: 0.95rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.overview-time {
+  color: var(--color-primary);
+  font-size: 1.15rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.overview-eta {
+  justify-self: end;
+  color: var(--color-text-dim);
+  font-size: 0.88rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.overview-destination {
+  margin: 7px 0 0 66px;
+  color: var(--color-text);
+  font-size: 0.96rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.next-bus {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.next-bus[hidden],
+.upcoming[hidden] {
+  display: none;
+}
+
+.next-bus-eta {
+  margin: 0;
+  font-size: 4.4rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--color-primary-strong);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.next-bus-eta .unit {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin-left: 4px;
+  color: var(--color-text-dim);
+}
+
+.next-bus-eta .seconds {
+  font-size: 2.6rem;
+  font-weight: 800;
+  margin-left: 8px;
+  color: var(--color-primary-strong);
+}
+
+.next-bus-eta .prefix {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin-right: 6px;
+  color: var(--color-text-dim);
+  vertical-align: middle;
+}
+
+.next-bus-time {
+  margin: 6px 0 0;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.next-bus-dest {
+  margin: 2px 0 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.upcoming {
+  list-style: none;
+  margin: 0;
+  padding: 10px 0 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+.upcoming-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 10px;
+  font-size: 0.95rem;
+}
+
+.upcoming-label {
+  color: var(--color-text-dim);
+  min-width: 3.2em;
+  text-align: right;
+}
+
+.upcoming-time {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.upcoming-eta {
+  color: var(--color-text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.pending-message {
+  margin: 8px 0 0;
+  padding: 18px 8px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.6;
+}
+
+.pending-message-sub {
+  display: block;
+  margin-top: 8px;
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--color-text-dim);
+}
+
+.locate-btn {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--safe-bottom) + 12px);
+  transform: translateX(-50%);
+  z-index: 20;
+  width: calc(100% - 32px);
+  max-width: 448px;
+  padding: 14px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+}
+
+.locate-btn:active {
+  background: #1a2740;
+}
+
+.locate-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 380px) {
+  .overview-item-top {
+    grid-template-columns: minmax(54px, auto) 64px 1fr;
+    gap: 6px;
+  }
+
+  .overview-destination {
+    margin-left: 60px;
+  }
+
+  .overview-eta {
+    font-size: 0.8rem;
+  }
+}
+
+@media (min-width: 420px) {
+  .next-bus-eta {
+    font-size: 5rem;
+  }
+
+  .next-bus-eta .seconds {
+    font-size: 3rem;
+  }
+}
+/* App menu */
+body.menu-open {
+  overflow: hidden;
+}
+
+.menu-btn,
+.back-btn {
+  position: absolute;
+  left: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  color: var(--color-text);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 1.45rem;
+  cursor: pointer;
+}
+
+.menu-btn:focus-visible,
+.back-btn:focus-visible,
+.menu-close:focus-visible,
+.app-menu-link:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(0, 0, 0, 0.58);
+}
+
+.menu-backdrop[hidden],
+.app-menu[hidden] {
+  display: none;
+}
+
+.app-menu {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 50;
+  width: min(82vw, 320px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: calc(var(--safe-top) + 18px) 18px calc(var(--safe-bottom) + 20px);
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  box-shadow: 12px 0 30px rgba(0, 0, 0, 0.35);
+}
+
+.app-menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  margin-bottom: 8px;
+}
+
+.app-menu-header strong {
+  font-size: 1rem;
+}
+
+.menu-close {
+  width: 44px;
+  height: 44px;
+  color: var(--color-text);
+  background: transparent;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.7rem;
+  cursor: pointer;
+}
+
+.app-menu-link {
+  display: flex;
+  align-items: center;
+  min-height: 52px;
+  padding: 12px 14px;
+  color: var(--color-text);
+  text-decoration: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.app-menu-link:active {
+  background: #1a2740;
+}
+
+.app-menu-link-feedback {
+  margin-top: auto;
+  border-top: 1px solid var(--color-border);
+  border-radius: 0;
+}
+
+/* Feedback page */
+.feedback-app {
+  padding-bottom: calc(var(--safe-bottom) + 24px);
+}
+
+.feedback-header {
+  min-height: 44px;
+}
+
+.feedback-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+}
+
+.feedback-intro,
+.feedback-note p {
+  margin: 0;
+  color: var(--color-text-dim);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.feedback-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.feedback-field small {
+  color: var(--color-text-dim);
+  font-weight: 500;
+}
+
+.feedback-field select,
+.feedback-field textarea {
+  width: 100%;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 12px;
+  font: inherit;
+  font-weight: 500;
+}
+
+.feedback-field textarea {
+  min-height: 180px;
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.feedback-field select:focus,
+.feedback-field textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(76, 141, 255, 0.35);
+}
+
+.feedback-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.feedback-send,
+.feedback-secondary,
+.feedback-clear {
+  min-height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font: inherit;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+}
+
+.feedback-send {
+  color: #081327;
+  background: var(--color-primary);
+  text-decoration: none;
+  border: 1px solid var(--color-primary);
+}
+
+.feedback-send.is-disabled,
+.feedback-send[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.feedback-secondary {
+  color: var(--color-text);
+  background: transparent;
+  border: 1px solid var(--color-border);
+}
+
+.feedback-clear {
+  min-height: 44px;
+  color: var(--color-text-dim);
+  background: transparent;
+  border: none;
+  font-size: 0.9rem;
+}
+
+.feedback-status {
+  min-height: 1.4em;
+  margin: -4px 0 0;
+  color: var(--color-primary);
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.feedback-note {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border);
+}
+
+.feedback-note h2 {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+
+/* Pull-to-refresh onboarding hint */
+.pull-refresh-hint {
+  position: fixed;
+  top: calc(var(--safe-top) + 62px);
+  left: 50%;
+  z-index: 35;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 10px 16px;
+  color: var(--color-primary-strong);
+  background: rgba(18, 26, 43, 0.96);
+  border: 1px solid rgba(76, 141, 255, 0.55);
+  border-radius: 999px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-align: center;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  animation: pull-refresh-hint 4.8s ease-out 0.35s forwards;
+}
+
+@keyframes pull-refresh-hint {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+  }
+  12%,
+  52% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+    visibility: hidden;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pull-refresh-hint {
+    animation-duration: 3.2s;
+  }
+
+  @keyframes pull-refresh-hint {
+    0%,
+    15%,
+    60% {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+    100% {
+      opacity: 0;
+      transform: translate(-50%, 0);
+      visibility: hidden;
+    }
+  }
+}
+
+.alarm-app {
+  padding-bottom: calc(var(--safe-bottom) + 28px);
+  gap: 12px;
+}
+.alarm-header { min-height: 44px; }
+.alarm-caption {
+  margin: -8px 0 2px;
+  text-align: center;
+  color: var(--color-text-dim);
+  font-size: .78rem;
+}
+.alarm-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.alarm-field {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+}
+.alarm-field:last-child { grid-column: 1 / -1; }
+.alarm-field span {
+  color: var(--color-text-dim);
+  font-size: .72rem;
+  font-weight: 700;
+}
+.alarm-field select {
+  width: 100%;
+  min-width: 0;
+  padding: 5px 24px 5px 0;
+  border: 0;
+  color: var(--color-text);
+  background: transparent;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 800;
+}
+.alarm-field:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(76,141,255,.25);
+}
+.alarm-next {
+  padding: 18px 14px;
+  text-align: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+}
+.alarm-next-label,
+.alarm-countdown { margin: 0; color: var(--color-text-dim); }
+.alarm-next-label { font-size: .8rem; }
+.alarm-next-time {
+  margin: 5px 0 2px;
+  color: var(--color-primary-strong);
+  font-size: clamp(3rem, 15vw, 4.4rem);
+  font-weight: 900;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.alarm-countdown { font-size: .82rem; font-variant-numeric: tabular-nums; }
+.alarm-actions {
+  display: grid;
+  grid-template-columns: 1.25fr .75fr;
+  gap: 8px;
+}
+.alarm-primary,
+.alarm-secondary {
+  min-height: 52px;
+  border-radius: 12px;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.alarm-primary {
+  color: #081327;
+  background: var(--color-primary);
+  border: 1px solid var(--color-primary);
+}
+.alarm-primary.is-on {
+  color: var(--color-primary-strong);
+  background: rgba(76,141,255,.18);
+}
+.alarm-secondary {
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+.alarm-status {
+  min-height: 1.25em;
+  margin: -5px 0 0;
+  text-align: center;
+  color: var(--color-text-dim);
+  font-size: .75rem;
+}
+.alarm-list-card {
+  padding: 15px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+}
+.alarm-list-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 11px;
+  border-bottom: 1px solid var(--color-border);
+}
+.alarm-list-head h2 { margin: 0; font-size: .95rem; }
+.alarm-list-head p { margin: 2px 0 0; color: var(--color-text-dim); font-size: .7rem; }
+.alarm-legend {
+  display: flex;
+  gap: 10px;
+  color: var(--color-text-dim);
+  font-size: .7rem;
+  white-space: nowrap;
+}
+.dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 4px;
+  vertical-align: -1px;
+  border-radius: 50%;
+}
+.dot-black { background: var(--color-text); }
+.dot-white { background: transparent; border: 1.5px solid var(--color-text); }
+.alarm-time-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  gap: 8px 6px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.alarm-time-item {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 36px;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  font-size: .83rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.alarm-time-item.is-past { opacity: .4; }
+.alarm-time-item.is-next {
+  border-color: var(--color-primary);
+  background: rgba(76,141,255,.12);
+}
+.alarm-note {
+  padding: 13px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  color: var(--color-text-dim);
+}
+.alarm-note strong { color: var(--color-text); font-size: .82rem; }
+.alarm-note p { margin: 5px 0 0; font-size: .76rem; line-height: 1.55; }
+@media (max-width: 350px) {
+  .alarm-time-list { grid-template-columns: repeat(3, minmax(0,1fr)); }
+}
+
+.alarm-lead {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+}
+.alarm-lead-title {
+  grid-column: 1 / -1;
+  color: var(--color-text-dim);
+  font-size: .72rem;
+  font-weight: 700;
+}
+.alarm-lead label {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.alarm-lead input {
+  width: 100%;
+  min-width: 0;
+  height: 46px;
+  padding: 8px 10px;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  font: inherit;
+  font-size: 1.15rem;
+  font-weight: 800;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.alarm-lead label span {
+  flex: 0 0 auto;
+  color: var(--color-text-dim);
+  font-size: .82rem;
+  font-weight: 700;
+}
+.alarm-lead input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(76,141,255,.25);
+}
+
+.alarm-duty-field {
+  grid-column: 1 / -1;
+}
+.alarm-duty-native {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+}
+.alarm-duty-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.alarm-duty-option {
+  min-height: 48px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  color: var(--color-text);
+  background: var(--color-bg);
+  font: inherit;
+  font-size: 1.05rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.alarm-duty-option[aria-checked="true"] {
+  border-color: var(--color-primary);
+  background: rgba(76,141,255,.18);
+  box-shadow: 0 0 0 2px rgba(76,141,255,.22);
+}
+.alarm-duty-option:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* buttons-only duty selector: no native select exists on this page */
+.alarm-duty-option.is-selected {
+  border-color: var(--color-primary);
+  background: rgba(76,141,255,.18);
+  box-shadow: 0 0 0 2px rgba(76,141,255,.22);
+}
+
+.alarm-all-option {
+  width: 100%;
+  min-height: 50px;
+  margin-bottom: 8px;
+  border: 1px solid var(--color-primary);
+  border-radius: 10px;
+  color: var(--color-primary-strong);
+  background: rgba(76,141,255,.08);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 900;
+}
+.alarm-all-option.is-selected {
+  color: #081327;
+  background: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(76,141,255,.22);
+}
+.alarm-countdown-card {
+  padding: 20px 14px;
+}
+.alarm-countdown-main {
+  color: var(--color-primary-strong);
+  font-size: clamp(2rem, 10vw, 3.2rem);
+  font-weight: 900;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+.alarm-actions-single {
+  grid-template-columns: 1fr;
+}
+
+.alarm-sound-field,
+.alarm-volume-field {
+  grid-column: 1 / -1;
+}
+.alarm-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.alarm-choice-option {
+  min-height: 48px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  color: var(--color-text);
+  background: var(--color-bg);
+  font: inherit;
+  font-weight: 800;
+}
+.alarm-choice-option.is-selected {
+  border-color: var(--color-primary);
+  background: rgba(76,141,255,.18);
+  box-shadow: 0 0 0 2px rgba(76,141,255,.22);
+}
+
+.v60-badge{display:inline-flex;align-items:center;justify-content:center;margin-left:8px;padding:2px 7px;border:1px solid var(--color-primary);border-radius:999px;font-size:.68rem;font-weight:900;color:var(--color-primary-strong);vertical-align:middle}
+</style>
+</head>
+<body>
+<div class="app alarm-app">
+  <header class="app-header alarm-header">
+    <a class="back-btn" href="./" aria-label="次バス大阪へ戻る">‹</a>
+    <h1>船町 乗務アラーム <span class="v60-badge">v60</span></h1>
+  </header>
+
+  <p id="alarm-caption" class="alarm-caption">乗務表の丸印時刻の30秒前に約1秒だけ鳴動</p>
+
+  <section class="alarm-controls" aria-label="アラーム設定">
+    <label class="alarm-field">
+      <span>日区分</span>
+      <select id="alarm-day">
+        <option value="weekday">平日</option>
+        <option value="holiday">休日</option>
+      </select>
+    </label>
+    <div class="alarm-field alarm-duty-field">
+      <span>勤務</span>
+      <button id="alarm-all" class="alarm-all-option" type="button" aria-pressed="false">全て鳴らす</button>
+      <div id="alarm-duty-grid" class="alarm-duty-grid" role="radiogroup" aria-label="勤務を選択"></div>
+    </div>
+    <div class="alarm-field alarm-sound-field">
+      <span>音を選択</span>
+      <div id="alarm-sound-grid" class="alarm-choice-grid" role="radiogroup" aria-label="音を選択">
+        <button type="button" class="alarm-choice-option" data-sound="beep" role="radio">ビープ</button>
+        <button type="button" class="alarm-choice-option" data-sound="chime" role="radio">チャイム</button>
+        <button type="button" class="alarm-choice-option" data-sound="double" role="radio">2連音</button>
+      </div>
+    </div>
+    <div class="alarm-field alarm-volume-field">
+      <span>音量</span>
+      <div id="alarm-volume-grid" class="alarm-choice-grid" role="radiogroup" aria-label="音量を選択">
+        <button type="button" class="alarm-choice-option" data-volume="low" role="radio">小</button>
+        <button type="button" class="alarm-choice-option" data-volume="medium" role="radio">中</button>
+        <button type="button" class="alarm-choice-option" data-volume="high" role="radio">大</button>
+      </div>
+    </div>
+    <div class="alarm-lead" aria-label="鳴らすタイミング">
+      <span class="alarm-lead-title">何分・何秒前に鳴らす</span>
+      <label>
+        <input id="alarm-lead-minutes" type="number" min="0" max="59" inputmode="numeric" value="0" aria-label="何分前" />
+        <span>分前</span>
+      </label>
+      <label>
+        <input id="alarm-lead-seconds" type="number" min="0" max="59" inputmode="numeric" value="30" aria-label="何秒前" />
+        <span>秒前</span>
+      </label>
+    </div>
+  </section>
+
+  <section class="alarm-next alarm-countdown-card" aria-live="polite">
+    <p id="alarm-countdown" class="alarm-countdown alarm-countdown-main">残り時間を計算中</p>
+  </section>
+
+  <section class="alarm-actions alarm-actions-single">
+    <button id="alarm-test" class="alarm-secondary" type="button">1秒テスト</button>
+  </section>
+  <p id="alarm-status" class="alarm-status" role="status" aria-live="polite">アプリ起動中は自動監視</p>
+
+  <section class="alarm-list-card">
+    <div class="alarm-list-head">
+      <div>
+        <h2>今日の時刻</h2>
+        <p id="alarm-list-summary">--件</p>
+      </div>
+      <div class="alarm-legend" aria-label="凡例">
+        <span><i class="dot dot-white"></i>白丸</span>
+        <span><i class="dot dot-black"></i>黒丸</span>
+      </div>
+    </div>
+    <ol id="alarm-time-list" class="alarm-time-list"></ol>
+  </section>
+
+  <aside class="alarm-note">
+    <strong>Web版の注意</strong>
+    <p>このページを開いている間は自動で監視します。画面OFF・省電力・他アプリ使用中はブラウザが停止して鳴らない場合があります。</p>
+  </aside>
+</div>
+<script>
+(() => {
+  "use strict";
+
+  const schedules = {
+    weekday: {
+      "1¹": [
+        ["06:15","black"],["07:00","white"],["07:15","white"],["07:30","black"],["07:40","black"],
+        ["08:10","white"],["08:20","white"],["08:30","black"],["08:45","black"],
+        ["09:40","white"],["10:00","white"],["10:20","black"],["10:40","black"],
+        ["11:40","white"],["12:00","white"],["12:20","black"],["12:40","black"],["13:40","white"]
+      ],
+      "1²": [
+        ["06:15","white"],["06:30","black"],["06:45","black"],["07:30","white"],["07:40","white"],["07:50","black"],["08:00","black"],
+        ["08:30","white"],["08:45","white"],["09:00","black"],["09:20","black"],
+        ["10:20","white"],["10:40","white"],["11:00","black"],["11:20","black"],
+        ["12:20","white"],["12:40","white"],["13:00","black"],["13:20","black"]
+      ],
+      "1³": [
+        ["06:30","white"],["06:45","white"],["07:00","black"],["07:15","black"],
+        ["07:50","white"],["08:00","white"],["08:10","black"],["08:20","black"],
+        ["09:00","white"],["09:20","white"],["09:40","black"],["10:00","black"],
+        ["11:00","white"],["11:20","white"],["11:40","black"],["12:00","black"],
+        ["13:00","white"],["13:20","white"],["13:40","black"]
+      ],
+      "5¹": [
+        ["14:00","black"],["15:00","white"],["15:20","white"],["15:40","black"],["16:00","black"],
+        ["17:00","white"],["17:15","white"],["17:30","black"],["17:40","black"],
+        ["18:10","white"],["18:20","white"],["18:30","black"],["18:45","black"],
+        ["19:30","white"],["19:45","white"],["20:00","black"],["20:15","black"],["21:00","white"]
+      ],
+      "5²": [
+        ["14:00","white"],["14:20","black"],["14:40","black"],["15:40","white"],["16:00","white"],["16:20","black"],["16:40","black"],
+        ["17:30","white"],["17:40","white"],["17:50","black"],["18:00","black"],
+        ["18:30","white"],["18:45","white"],["19:00","black"],["19:15","black"],
+        ["20:00","white"],["20:15","white"],["20:30","black"],["20:45","black"]
+      ],
+      "5³": [
+        ["14:20","white"],["14:40","white"],["15:00","black"],["15:20","black"],
+        ["16:20","white"],["16:40","white"],["17:00","black"],["17:15","black"],
+        ["17:50","white"],["18:00","white"],["18:10","black"],["18:20","black"],
+        ["19:00","white"],["19:15","white"],["19:30","black"],["19:45","black"],
+        ["20:30","white"],["20:45","white"],["21:00","black"]
+      ]
+    },
+    holiday: {
+      "1¹": [
+        ["06:30","black"],["07:15","white"],["07:30","white"],["07:45","black"],["08:00","black"],
+        ["08:45","white"],["09:00","white"],["09:20","black"],["09:40","black"],
+        ["10:40","white"],["11:00","white"],["11:20","black"],["11:40","black"],["12:40","white"],["13:00","white"]
+      ],
+      "1²": [
+        ["06:30","white"],["06:45","black"],["07:00","black"],["07:45","white"],["08:00","white"],["08:15","black"],["08:30","black"],
+        ["09:20","white"],["09:40","white"],["10:00","black"],["10:20","black"],
+        ["11:20","white"],["11:40","white"],["12:00","black"],["12:20","black"]
+      ],
+      "1³": [
+        ["06:45","white"],["07:00","white"],["07:15","black"],["07:30","black"],
+        ["08:15","white"],["08:30","white"],["08:45","black"],["09:00","black"],
+        ["10:00","white"],["10:20","white"],["10:40","black"],["11:00","black"],
+        ["12:00","white"],["12:20","white"],["12:40","black"],["13:00","black"]
+      ],
+      "4¹": [
+        ["13:20","black"],["13:40","black"],["14:40","white"],["15:00","white"],["15:20","black"],["15:40","black"],
+        ["16:40","white"],["17:00","white"],["17:20","black"],["17:40","black"],
+        ["18:40","white"],["19:00","white"],["19:20","black"],["19:40","black"],["20:40","white"]
+      ],
+      "4²": [
+        ["13:20","white"],["13:40","white"],["14:00","black"],["14:20","black"],
+        ["15:20","white"],["15:40","white"],["16:00","black"],["16:20","black"],
+        ["17:20","white"],["17:40","white"],["18:00","black"],["18:20","black"],
+        ["19:20","white"],["19:40","white"],["20:00","black"],["20:20","black"]
+      ],
+      "4³": [
+        ["14:00","white"],["14:20","white"],["14:40","black"],["15:00","black"],
+        ["16:00","white"],["16:20","white"],["16:40","black"],["17:00","black"],
+        ["18:00","white"],["18:20","white"],["18:40","black"],["19:00","black"],
+        ["20:00","white"],["20:20","white"],["20:40","black"]
+      ]
+    }
+  };
+
+  const dayEl = document.getElementById("alarm-day");
+  const dutyGridEl = document.getElementById("alarm-duty-grid");
+  const soundGridEl = document.getElementById("alarm-sound-grid");
+  const volumeGridEl = document.getElementById("alarm-volume-grid");
+  const leadMinutesEl = document.getElementById("alarm-lead-minutes");
+  const leadSecondsEl = document.getElementById("alarm-lead-seconds");
+  const captionEl = document.getElementById("alarm-caption");
+  const allEl = document.getElementById("alarm-all");
+  const countdownEl = document.getElementById("alarm-countdown");
+  const testEl = document.getElementById("alarm-test");
+  const statusEl = document.getElementById("alarm-status");
+  const listEl = document.getElementById("alarm-time-list");
+  const summaryEl = document.getElementById("alarm-list-summary");
+
+  let audioContext = null;
+  let soundEnabled = true;
+  let wakeLock = null;
+  let firedKey = "";
+  let allMode = localStorage.getItem("funamachi-alarm-all") === "true";
+  let currentSound = localStorage.getItem("funamachi-alarm-sound") || "beep";
+  let currentVolume = localStorage.getItem("funamachi-alarm-volume") || "medium";
+
+  const savedDay = localStorage.getItem("funamachi-alarm-day");
+  const today = new Date().getDay();
+  dayEl.value = savedDay || ((today === 0 || today === 6) ? "holiday" : "weekday");
+  leadMinutesEl.value = localStorage.getItem("funamachi-alarm-lead-minutes") || "0";
+  leadSecondsEl.value = localStorage.getItem("funamachi-alarm-lead-seconds") || "30";
+
+  const dutiesByDay = {
+    weekday: ["1¹","1²","1³","5¹","5²","5³"],
+    holiday: ["1¹","1²","1³","4¹","4²","4³"]
+  };
+  const allDuties = [...new Set([...dutiesByDay.weekday, ...dutiesByDay.holiday])];
+  let currentDuty = allDuties.includes(localStorage.getItem("funamachi-alarm-duty"))
+    ? localStorage.getItem("funamachi-alarm-duty")
+    : "1¹";
+
+  function dutiesForCurrentDay() {
+    return dutiesByDay[dayEl.value] || dutiesByDay.weekday;
+  }
+
+  function normalizeDutyForDay(duty) {
+    const allowed = dutiesForCurrentDay();
+    if (allowed.includes(duty)) return duty;
+
+    const suffix = duty.slice(-1);
+    const counterpart = dayEl.value === "holiday" ? "4" + suffix : "5" + suffix;
+    if (allowed.includes(counterpart)) return counterpart;
+
+    return "1¹";
+  }
+
+  function syncDutyButtons() {
+    allEl.setAttribute("aria-pressed", String(allMode));
+    allEl.classList.toggle("is-selected", allMode);
+    dutyGridEl.querySelectorAll(".alarm-duty-option").forEach((button) => {
+      const selected = !allMode && button.dataset.duty === currentDuty;
+      button.setAttribute("aria-checked", String(selected));
+      button.tabIndex = selected ? 0 : -1;
+      button.classList.toggle("is-selected", selected);
+    });
+  }
+
+  function setDuty(duty) {
+    allMode = false;
+    localStorage.setItem("funamachi-alarm-all", "false");
+    currentDuty = normalizeDutyForDay(duty);
+    localStorage.setItem("funamachi-alarm-duty", currentDuty);
+    syncDutyButtons();
+    firedKey = "";
+    renderList();
+    updateClock();
+  }
+
+  function toggleAllMode() {
+    allMode = !allMode;
+    localStorage.setItem("funamachi-alarm-all", String(allMode));
+    syncDutyButtons();
+    firedKey = "";
+    renderList();
+    updateClock();
+  }
+
+  function populateDuties() {
+    currentDuty = normalizeDutyForDay(currentDuty);
+    localStorage.setItem("funamachi-alarm-duty", currentDuty);
+    dutyGridEl.textContent = "";
+    dutiesForCurrentDay().forEach((duty) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "alarm-duty-option";
+      button.dataset.duty = duty;
+      button.textContent = duty;
+      button.setAttribute("role", "radio");
+      button.addEventListener("click", () => setDuty(duty));
+      dutyGridEl.appendChild(button);
+    });
+    syncDutyButtons();
+  }
+
+  function activeSchedule() {
+    if (!allMode) return schedules[dayEl.value][currentDuty] || [];
+
+    const merged = [];
+    const seen = new Set();
+    dutiesForCurrentDay().forEach((duty) => {
+      (schedules[dayEl.value][duty] || []).forEach(([time, mark]) => {
+        const key = time + "|" + mark;
+        if (!seen.has(key)) {
+          seen.add(key);
+          merged.push([time, mark]);
+        }
+      });
+    });
+    merged.sort((a, b) => a[0].localeCompare(b[0]) || a[1].localeCompare(b[1]));
+    return merged;
+  }
+
+  function dateAt(time, addDay = 0) {
+    const [h,m] = time.split(":").map(Number);
+    const d = new Date();
+    d.setDate(d.getDate() + addDay);
+    d.setHours(h,m,0,0);
+    return d;
+  }
+
+  function clampInt(value, min, max) {
+    const n = Number.parseInt(value, 10);
+    if (!Number.isFinite(n)) return min;
+    return Math.min(max, Math.max(min, n));
+  }
+
+  function leadParts() {
+    const minutes = clampInt(leadMinutesEl.value, 0, 59);
+    const seconds = clampInt(leadSecondsEl.value, 0, 59);
+    return { minutes, seconds };
+  }
+
+  function leadMs() {
+    const { minutes, seconds } = leadParts();
+    return (minutes * 60 + seconds) * 1000;
+  }
+
+  function leadText() {
+    const { minutes, seconds } = leadParts();
+    if (minutes === 0 && seconds === 0) return "時刻ちょうど";
+    if (minutes === 0) return seconds + "秒前";
+    if (seconds === 0) return minutes + "分前";
+    return minutes + "分" + seconds + "秒前";
+  }
+
+  function syncLeadUi() {
+    const { minutes, seconds } = leadParts();
+    leadMinutesEl.value = String(minutes);
+    leadSecondsEl.value = String(seconds);
+    localStorage.setItem("funamachi-alarm-lead-minutes", String(minutes));
+    localStorage.setItem("funamachi-alarm-lead-seconds", String(seconds));
+    const text = leadText();
+    captionEl.textContent = "乗務表の丸印時刻の" + text + "に約1秒だけ鳴動";
+  }
+
+  function alarmAt(eventDate) {
+    return new Date(eventDate.getTime() - leadMs());
+  }
+
+  function findNext(now = new Date()) {
+    const rows = activeSchedule();
+    for (const item of rows) {
+      const eventDate = dateAt(item[0], 0);
+      const alarmDate = alarmAt(eventDate);
+      if (alarmDate > now) return { item, eventDate, alarmDate, tomorrow: false };
+    }
+    if (!rows.length) return null;
+    const eventDate = dateAt(rows[0][0], 1);
+    return { item: rows[0], eventDate, alarmDate: alarmAt(eventDate), tomorrow: true };
+  }
+
+  function renderList() {
+    const rows = activeSchedule();
+    const now = new Date();
+    const next = findNext(now);
+    listEl.textContent = "";
+    rows.forEach(([time,mark]) => {
+      const li = document.createElement("li");
+      li.className = "alarm-time-item";
+      const eventDate = dateAt(time);
+      if (alarmAt(eventDate) < now) li.classList.add("is-past");
+      if (next && !next.tomorrow && next.item[0] === time && next.item[1] === mark) li.classList.add("is-next");
+      const dot = document.createElement("i");
+      dot.className = "dot " + (mark === "black" ? "dot-black" : "dot-white");
+      dot.setAttribute("aria-hidden","true");
+      const span = document.createElement("span");
+      span.textContent = time;
+      li.append(dot, span);
+      listEl.appendChild(li);
+    });
+    summaryEl.textContent = rows.length + "件";
+  }
+
+  function updateClock() {
+    const now = new Date();
+    const next = findNext(now);
+    if (!next) {
+      countdownEl.textContent = "対象時刻がありません";
+      return;
+    }
+    const seconds = Math.max(0, Math.floor((next.alarmDate - now) / 1000));
+    const totalMinutes = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    countdownEl.textContent = "残り " + totalMinutes + "分 " + s + "秒";
+
+    if (soundEnabled) {
+      for (const item of activeSchedule()) {
+        const eventDate = dateAt(item[0], 0);
+        const target = alarmAt(eventDate);
+        const delta = now.getTime() - target.getTime();
+        const dateKey = target.toISOString() + "|" + dayEl.value + "|" + (allMode ? "ALL" : currentDuty);
+        if (delta >= 0 && delta < 2000 && firedKey !== dateKey) {
+          firedKey = dateKey;
+          beep();
+          break;
+        }
+      }
+    }
+    if (now.getSeconds() % 10 === 0) renderList();
+  }
+
+  async function prepareAudio() {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) {
+      statusEl.textContent = "このブラウザは音声機能に対応していません";
+      return false;
+    }
+    if (!audioContext) audioContext = new Ctx();
+    try {
+      if (audioContext.state === "suspended") await audioContext.resume();
+    } catch (_) {}
+    soundEnabled = true;
+    statusEl.textContent = audioContext.state === "running"
+      ? "アプリ起動中は自動監視"
+      : "最初の画面操作後から自動で鳴動";
+    try {
+      if ("wakeLock" in navigator && document.visibilityState === "visible" && !wakeLock) {
+        wakeLock = await navigator.wakeLock.request("screen");
+        wakeLock.addEventListener("release", () => { wakeLock = null; });
+      }
+    } catch (_) {}
+    return audioContext.state === "running";
+  }
+
+  function volumeLevel() {
+    return currentVolume === "low" ? 0.14 : currentVolume === "high" ? 0.55 : 0.32;
+  }
+
+  function playTone(frequency, startOffset, duration, level) {
+    const start = audioContext.currentTime + startOffset;
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    oscillator.type = currentSound === "chime" ? "triangle" : "sine";
+    oscillator.frequency.setValueAtTime(frequency, start);
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(level, start + 0.012);
+    gain.gain.setValueAtTime(level, Math.max(start + 0.02, start + duration - 0.06));
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+    oscillator.start(start);
+    oscillator.stop(start + duration + 0.02);
+  }
+
+  async function beep(preview = false) {
+    const ready = await prepareAudio();
+    if (!ready || !audioContext) return;
+    const level = volumeLevel();
+    const duration = preview ? 0.32 : 0.95;
+
+    if (currentSound === "chime") {
+      playTone(880, 0, duration * 0.55, level);
+      playTone(1320, duration * 0.40, duration * 0.55, level);
+    } else if (currentSound === "double") {
+      playTone(1050, 0, preview ? 0.13 : 0.30, level);
+      playTone(1050, preview ? 0.18 : 0.40, preview ? 0.13 : 0.30, level);
+    } else {
+      playTone(1000, 0, duration, level);
+    }
+  }
+
+  function syncAudioChoiceButtons() {
+    soundGridEl.querySelectorAll("[data-sound]").forEach((button) => {
+      const selected = button.dataset.sound === currentSound;
+      button.classList.toggle("is-selected", selected);
+      button.setAttribute("aria-checked", String(selected));
+    });
+    volumeGridEl.querySelectorAll("[data-volume]").forEach((button) => {
+      const selected = button.dataset.volume === currentVolume;
+      button.classList.toggle("is-selected", selected);
+      button.setAttribute("aria-checked", String(selected));
+    });
+  }
+
+  function chooseSound(sound) {
+    currentSound = ["beep","chime","double"].includes(sound) ? sound : "beep";
+    localStorage.setItem("funamachi-alarm-sound", currentSound);
+    syncAudioChoiceButtons();
+    beep(true);
+  }
+
+  function chooseVolume(volume) {
+    currentVolume = ["low","medium","high"].includes(volume) ? volume : "medium";
+    localStorage.setItem("funamachi-alarm-volume", currentVolume);
+    syncAudioChoiceButtons();
+    beep(true);
+  }
+
+  dayEl.addEventListener("change", () => {
+    localStorage.setItem("funamachi-alarm-day", dayEl.value);
+    populateDuties();
+    firedKey = "";
+    renderList();
+    updateClock();
+  });
+  [leadMinutesEl, leadSecondsEl].forEach((input) => {
+    input.addEventListener("change", () => {
+      syncLeadUi();
+      firedKey = "";
+      renderList();
+      updateClock();
+    });
+    input.addEventListener("input", () => {
+      syncLeadUi();
+      renderList();
+      updateClock();
+    });
+  });
+  allEl.addEventListener("click", () => {
+    prepareAudio();
+    toggleAllMode();
+  });
+  soundGridEl.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-sound]");
+    if (button) chooseSound(button.dataset.sound);
+  });
+  volumeGridEl.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-volume]");
+    if (button) chooseVolume(button.dataset.volume);
+  });
+  testEl.addEventListener("click", () => beep(false));
+
+  const unlockAudio = () => {
+    prepareAudio();
+    window.removeEventListener("pointerdown", unlockAudio, true);
+    window.removeEventListener("keydown", unlockAudio, true);
+  };
+  window.addEventListener("pointerdown", unlockAudio, true);
+  window.addEventListener("keydown", unlockAudio, true);
+
+  document.addEventListener("visibilitychange", async () => {
+    if (document.visibilityState === "visible" && soundEnabled && "wakeLock" in navigator && !wakeLock) {
+      try { wakeLock = await navigator.wakeLock.request("screen"); } catch (_) {}
+    }
+  });
+
+
+  populateDuties();
+  syncLeadUi();
+  syncAudioChoiceButtons();
+  prepareAudio();
+  renderList();
+  updateClock();
+  setInterval(updateClock, 250);
+})();
+</script>
+<script>document.documentElement.dataset.alarmUi="buttons-only-v60";</script>
+</body>
+</html>
