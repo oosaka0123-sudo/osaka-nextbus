@@ -40,10 +40,10 @@ jobs:
           key: osaka-nextbus-debug-keystore-v1
 
       - name: Build APK
-        run: gradle -p android-app assembleDebug --no-daemon
+        run: gradle -p android-app assembleDirectDebug --no-daemon
 
       - name: Prepare download file
-        run: cp android-app/app/build/outputs/apk/debug/app-debug.apk osaka-nextbus.apk
+        run: cp android-app/app/build/outputs/apk/direct/debug/app-direct-debug.apk osaka-nextbus.apk
 
       - name: Verify APK signature and package metadata
         run: |
