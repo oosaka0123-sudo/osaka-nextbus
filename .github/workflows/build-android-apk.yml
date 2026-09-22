@@ -26,7 +26,7 @@ jobs:
           packages: platform-tools
 
       - name: Install Android SDK packages
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -47,8 +47,8 @@ jobs:
 
       - name: Verify APK signature and package metadata
         run: |
-          "$ANDROID_SDK_ROOT/build-tools/35.0.0/apksigner" verify --verbose --print-certs osaka-nextbus.apk
-          "$ANDROID_SDK_ROOT/build-tools/35.0.0/aapt" dump badging osaka-nextbus.apk
+          "$ANDROID_SDK_ROOT/build-tools/36.0.0/apksigner" verify --verbose --print-certs osaka-nextbus.apk
+          "$ANDROID_SDK_ROOT/build-tools/36.0.0/aapt" dump badging osaka-nextbus.apk
           unzip -t osaka-nextbus.apk
 
       - name: Enable KVM permissions
