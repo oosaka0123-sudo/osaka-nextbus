@@ -46,11 +46,11 @@ jobs:
           ANDROID_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_STORE_PASSWORD }}
           ANDROID_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
           ANDROID_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
-        run: gradle -p android-app bundleRelease --no-daemon
+        run: gradle -p android-app bundlePlayRelease --no-daemon
 
       - name: Verify signed AAB
         run: |
-          cp android-app/app/build/outputs/bundle/release/app-release.aab osaka-nextbus-play.aab
+          cp android-app/app/build/outputs/bundle/playRelease/app-play-release.aab osaka-nextbus-play.aab
           jarsigner -verify -verbose -certs osaka-nextbus-play.aab
           unzip -t osaka-nextbus-play.aab
 
