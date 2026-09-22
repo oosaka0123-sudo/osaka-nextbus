@@ -207,7 +207,7 @@ GitHub Actionsの `.github/workflows/validate-data.yml` がpush/PR時に自動�
 
 ## Service Worker
 
-現在のキャッシュ版は **v46** です。運用上の正本は `sw.js` の `CACHE_VERSION` とし、文書の固定値より実装値を優先します。
+現在のキャッシュ版は **v59** です。運用上の正本は `sw.js` の `CACHE_VERSION` とし、文書の固定値より実装値を優先します。
 
 オンライン時はネットワークを優先し、成功したレスポンスをキャッシュします。オフライン時のみキャッシュへフォールバックします。
 
