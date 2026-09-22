@@ -49,6 +49,8 @@ jobs:
         run: |
           "$ANDROID_SDK_ROOT/build-tools/36.0.0/apksigner" verify --verbose --print-certs osaka-nextbus.apk
           "$ANDROID_SDK_ROOT/build-tools/36.0.0/aapt" dump badging osaka-nextbus.apk
+          "$ANDROID_SDK_ROOT/build-tools/36.0.0/aapt" dump xmltree osaka-nextbus.apk AndroidManifest.xml | grep NativeFunamachiAlarmActivity
+          "$ANDROID_SDK_ROOT/build-tools/36.0.0/aapt" dump xmltree osaka-nextbus.apk AndroidManifest.xml | grep FunamachiAlarmService
           unzip -t osaka-nextbus.apk
 
       - name: Enable KVM permissions
@@ -70,8 +72,6 @@ jobs:
             adb install -r osaka-nextbus.apk
             adb shell pm path net.rss7.osakanextbus
             adb shell am start -W -n net.rss7.osakanextbus/.MainActivity
-            adb shell dumpsys package net.rss7.osakanextbus | grep NativeFunamachiAlarmActivity
-            adb shell dumpsys package net.rss7.osakanextbus | grep FunamachiAlarmService
             adb shell dumpsys package net.rss7.osakanextbus | grep versionName
 
       - name: Upload workflow artifact
