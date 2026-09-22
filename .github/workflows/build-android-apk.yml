@@ -70,6 +70,7 @@ jobs:
             adb install -r osaka-nextbus.apk
             adb shell pm path net.rss7.osakanextbus
             adb shell am start -W -n net.rss7.osakanextbus/.MainActivity
+            adb shell am start -W -n net.rss7.osakanextbus/.NativeFunamachiAlarmActivity
             adb shell dumpsys package net.rss7.osakanextbus | grep versionName
 
       - name: Upload workflow artifact
