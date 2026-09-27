@@ -1076,6 +1076,58 @@ body.menu-open {
   min-width: 0;
   width: 100%;
 }
+
+/* 勤務開始・終了カウントダウン */
+.shift-countdown-card {
+  padding: 16px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+}
+.shift-countdown-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.shift-countdown-title {
+  margin: 0;
+  color: var(--color-text);
+  font-size: .95rem;
+  font-weight: 900;
+}
+.shift-countdown-hours {
+  color: var(--color-text-dim);
+  font-size: .78rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.shift-countdown-phase {
+  margin: 13px 0 2px;
+  color: var(--color-text-dim);
+  font-size: .8rem;
+  font-weight: 700;
+  text-align: center;
+}
+.shift-countdown-value {
+  margin: 0;
+  color: var(--color-primary-strong);
+  font-size: clamp(2.35rem, 12vw, 3.7rem);
+  font-weight: 900;
+  line-height: 1.1;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: .02em;
+}
+.shift-countdown-note {
+  margin: 8px 0 0;
+  color: var(--color-text-dim);
+  font-size: .72rem;
+  line-height: 1.45;
+  text-align: center;
+}
+
 </style>
 </head>
 <body>
@@ -1149,6 +1201,17 @@ body.menu-open {
       </div>
     </div>
     <ol id="alarm-time-list" class="alarm-time-list"></ol>
+  </section>
+
+
+  <section id="shift-countdown-card" class="shift-countdown-card" aria-live="polite">
+    <div class="shift-countdown-head">
+      <h2 id="shift-countdown-title" class="shift-countdown-title">勤務時間</h2>
+      <span id="shift-countdown-hours" class="shift-countdown-hours">--:-- → --:--</span>
+    </div>
+    <p id="shift-countdown-phase" class="shift-countdown-phase">勤務時間を計算中</p>
+    <p id="shift-countdown-value" class="shift-countdown-value">--:--:--</p>
+    <p id="shift-countdown-note" class="shift-countdown-note">終了時刻は現在の音色・音量設定で鳴動します。</p>
   </section>
 
   <aside class="alarm-note">
@@ -1239,6 +1302,18 @@ body.menu-open {
     }
   };
 
+
+  const shiftTimes = {
+    weekday: {
+      "1": { start: "05:45", end: "14:15" },
+      "5": { start: "12:45", end: "21:15" }
+    },
+    holiday: {
+      "1": { start: "06:00", end: "14:30" },
+      "4": { start: "12:25", end: "20:55" }
+    }
+  };
+
   const dayEl = document.getElementById("alarm-day");
   const dutySelectEl = document.getElementById("alarm-duty-select");
   const soundSelectEl = document.getElementById("alarm-sound-select");
@@ -1252,10 +1327,20 @@ body.menu-open {
   const listEl = document.getElementById("alarm-time-list");
   const summaryEl = document.getElementById("alarm-list-summary");
 
+  const shiftCardEl = document.getElementById("shift-countdown-card");
+  const shiftTitleEl = document.getElementById("shift-countdown-title");
+  const shiftHoursEl = document.getElementById("shift-countdown-hours");
+  const shiftPhaseEl = document.getElementById("shift-countdown-phase");
+  const shiftCountdownEl = document.getElementById("shift-countdown-value");
+  const shiftNoteEl = document.getElementById("shift-countdown-note");
+
+
   let audioContext = null;
   let soundEnabled = true;
   let wakeLock = null;
   let firedKey = "";
+  let shiftEndFiredKey = localStorage.getItem("funamachi-shift-end-fired-key") || "";
+
   let allMode = localStorage.getItem("funamachi-alarm-all") === "true";
   let currentSound = localStorage.getItem("funamachi-alarm-sound") || "beep";
   let currentVolume = localStorage.getItem("funamachi-alarm-volume") || "medium";
@@ -1440,8 +1525,90 @@ body.menu-open {
     summaryEl.textContent = rows.length + "件";
   }
 
+
+  function shiftNumberForDuty() {
+    if (allMode || !currentDuty) return "";
+    const match = currentDuty.match(/^[145]/);
+    return match ? match[0] : "";
+  }
+
+  function currentShift() {
+    const number = shiftNumberForDuty();
+    const config = shiftTimes[dayEl.value] && shiftTimes[dayEl.value][number];
+    if (!number || !config) return null;
+    return { number, ...config };
+  }
+
+  function formatDuration(totalSeconds) {
+    const safe = Math.max(0, Math.floor(totalSeconds));
+    const hours = Math.floor(safe / 3600);
+    const minutes = Math.floor((safe % 3600) / 60);
+    const seconds = safe % 60;
+    return [hours, minutes, seconds].map((value) => String(value).padStart(2, "0")).join(":");
+  }
+
+  function localDateKey(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return y + "-" + m + "-" + d;
+  }
+
+  function maybeFireShiftEndAlarm(now, shift, endDate) {
+    if (!soundEnabled || !shift || !endDate) return;
+    const delta = now.getTime() - endDate.getTime();
+    if (delta < 0 || delta >= 2000) return;
+
+    const key = localDateKey(endDate) + "|" + dayEl.value + "|" + shift.number + "|" + shift.end;
+    if (shiftEndFiredKey === key) return;
+
+    shiftEndFiredKey = key;
+    localStorage.setItem("funamachi-shift-end-fired-key", key);
+    beep();
+  }
+
+  function updateShiftCountdown(now = new Date()) {
+    const shift = currentShift();
+    if (!shift) {
+      shiftTitleEl.textContent = "勤務時間";
+      shiftHoursEl.textContent = "--:-- → --:--";
+      shiftPhaseEl.textContent = allMode ? "勤務を1つ選択すると表示します" : "この勤務の時間設定がありません";
+      shiftCountdownEl.textContent = "--:--:--";
+      shiftNoteEl.textContent = "終了時刻は現在の音色・音量設定で鳴動します。";
+      shiftCardEl.dataset.phase = "unavailable";
+      return;
+    }
+
+    const startDate = dateAt(shift.start, 0);
+    const endDate = dateAt(shift.end, 0);
+    maybeFireShiftEndAlarm(now, shift, endDate);
+
+    shiftTitleEl.textContent = "勤務" + shift.number + "・" + (dayEl.value === "holiday" ? "休日" : "平日");
+    shiftHoursEl.textContent = shift.start + " → " + shift.end;
+    shiftNoteEl.textContent = "終了 " + shift.end + " に現在の音色・音量設定で鳴動します。";
+
+    if (now < startDate) {
+      shiftPhaseEl.textContent = "勤務開始まで";
+      shiftCountdownEl.textContent = formatDuration(Math.ceil((startDate - now) / 1000));
+      shiftCardEl.dataset.phase = "before";
+      return;
+    }
+
+    if (now < endDate) {
+      shiftPhaseEl.textContent = "勤務終了まで";
+      shiftCountdownEl.textContent = formatDuration(Math.ceil((endDate - now) / 1000));
+      shiftCardEl.dataset.phase = "working";
+      return;
+    }
+
+    shiftPhaseEl.textContent = "本日の勤務は終了";
+    shiftCountdownEl.textContent = "00:00:00";
+    shiftCardEl.dataset.phase = "ended";
+  }
+
   function updateClock() {
     const now = new Date();
+    updateShiftCountdown(now);
     const next = findNext(now);
     if (!next) {
       countdownEl.textContent = "対象時刻がありません";
