@@ -1143,8 +1143,9 @@ body.menu-open {
     <label class="alarm-field">
       <span>日区分</span>
       <select id="alarm-day">
-        <option value="weekday">平日</option>
-        <option value="holiday">休日</option>
+        <option value="auto">自動（カレンダー）</option>
+        <option value="weekday">平日（手動）</option>
+        <option value="holiday">休日（手動）</option>
       </select>
     </label>
     <label class="alarm-field alarm-duty-field">
@@ -1357,9 +1358,16 @@ body.menu-open {
     leadSecondsEl.appendChild(secondOption);
   }
 
-  const savedDay = localStorage.getItem("funamachi-alarm-day");
-  const today = new Date().getDay();
-  dayEl.value = savedDay || ((today === 0 || today === 6) ? "holiday" : "weekday");
+  const HOLIDAY_API_URL = "https://holidays-jp.github.io/api/v1/date.json";
+  const HOLIDAY_CACHE_KEY = "funamachi-jp-holidays-v1";
+  const DAY_MODE_KEY = "funamachi-alarm-day-mode";
+  let holidayCalendar = {};
+  let autoDayType = "weekday";
+  let autoHolidayName = "";
+  let lastAutoDateKey = "";
+
+  dayEl.value = localStorage.getItem(DAY_MODE_KEY) || "auto";
+  if (!["auto","weekday","holiday"].includes(dayEl.value)) dayEl.value = "auto";
   leadMinutesEl.value = localStorage.getItem("funamachi-alarm-lead-minutes") || "0";
   leadSecondsEl.value = localStorage.getItem("funamachi-alarm-lead-seconds") || "30";
 
@@ -1372,8 +1380,89 @@ body.menu-open {
     ? localStorage.getItem("funamachi-alarm-duty")
     : "1¹";
 
+
+  function dateKeyFor(date = new Date()) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return y + "-" + m + "-" + d;
+  }
+
+  function activeDayType() {
+    return dayEl.value === "auto" ? autoDayType : dayEl.value;
+  }
+
+  function updateAutoDayLabel() {
+    const option = dayEl.querySelector('option[value="auto"]');
+    if (!option) return;
+    const suffix = autoDayType === "holiday"
+      ? (autoHolidayName ? "休日・" + autoHolidayName : "休日")
+      : "平日";
+    option.textContent = "自動（" + suffix + "）";
+  }
+
+  function applyAutoCalendar(date = new Date()) {
+    const key = dateKeyFor(date);
+    const day = date.getDay();
+    autoHolidayName = holidayCalendar[key] || "";
+    autoDayType = (day === 0 || day === 6 || Boolean(autoHolidayName)) ? "holiday" : "weekday";
+    lastAutoDateKey = key;
+    updateAutoDayLabel();
+  }
+
+  function loadCachedHolidayCalendar() {
+    try {
+      const cached = JSON.parse(localStorage.getItem(HOLIDAY_CACHE_KEY) || "{}");
+      if (cached && typeof cached === "object" && !Array.isArray(cached)) {
+        holidayCalendar = cached;
+      }
+    } catch (_) {
+      holidayCalendar = {};
+    }
+  }
+
+  async function refreshHolidayCalendar() {
+    loadCachedHolidayCalendar();
+    applyAutoCalendar();
+    if (dayEl.value === "auto") {
+      populateDuties();
+      renderList();
+      updateClock();
+    }
+
+    try {
+      const response = await fetch(HOLIDAY_API_URL, { cache: "no-store" });
+      if (!response.ok) throw new Error("holiday calendar HTTP " + response.status);
+      const data = await response.json();
+      if (!data || typeof data !== "object" || Array.isArray(data)) throw new Error("invalid holiday calendar");
+      holidayCalendar = data;
+      localStorage.setItem(HOLIDAY_CACHE_KEY, JSON.stringify(data));
+      const before = autoDayType;
+      applyAutoCalendar();
+      if (dayEl.value === "auto" && before !== autoDayType) {
+        populateDuties();
+        firedKey = "";
+        renderList();
+        updateClock();
+      }
+    } catch (_) {
+      applyAutoCalendar();
+    }
+  }
+
+  function ensureAutoCalendarDate() {
+    if (dayEl.value !== "auto") return;
+    const key = dateKeyFor(new Date());
+    if (key === lastAutoDateKey) return;
+    applyAutoCalendar();
+    populateDuties();
+    firedKey = "";
+    renderList();
+    refreshHolidayCalendar();
+  }
+
   function dutiesForCurrentDay() {
-    return dutiesByDay[dayEl.value] || dutiesByDay.weekday;
+    return dutiesByDay[activeDayType()] || dutiesByDay.weekday;
   }
 
   function normalizeDutyForDay(duty) {
@@ -1381,7 +1470,7 @@ body.menu-open {
     if (allowed.includes(duty)) return duty;
 
     const suffix = duty.slice(-1);
-    const counterpart = dayEl.value === "holiday" ? "4" + suffix : "5" + suffix;
+    const counterpart = activeDayType() === "holiday" ? "4" + suffix : "5" + suffix;
     if (allowed.includes(counterpart)) return counterpart;
 
     return "1¹";
@@ -1427,12 +1516,13 @@ body.menu-open {
   }
 
   function activeSchedule() {
-    if (!allMode) return schedules[dayEl.value][currentDuty] || [];
+    const dayType = activeDayType();
+    if (!allMode) return schedules[dayType][currentDuty] || [];
 
     const merged = [];
     const seen = new Set();
     dutiesForCurrentDay().forEach((duty) => {
-      (schedules[dayEl.value][duty] || []).forEach(([time, mark]) => {
+      (schedules[dayType][duty] || []).forEach(([time, mark]) => {
         const key = time + "|" + mark;
         if (!seen.has(key)) {
           seen.add(key);
@@ -1534,7 +1624,8 @@ body.menu-open {
 
   function currentShift() {
     const number = shiftNumberForDuty();
-    const config = shiftTimes[dayEl.value] && shiftTimes[dayEl.value][number];
+    const dayType = activeDayType();
+    const config = shiftTimes[dayType] && shiftTimes[dayType][number];
     if (!number || !config) return null;
     return { number, ...config };
   }
@@ -1559,7 +1650,7 @@ body.menu-open {
     const delta = now.getTime() - endDate.getTime();
     if (delta < 0 || delta >= 2000) return;
 
-    const key = localDateKey(endDate) + "|" + dayEl.value + "|" + shift.number + "|" + shift.end;
+    const key = localDateKey(endDate) + "|" + activeDayType() + "|" + shift.number + "|" + shift.end;
     if (shiftEndFiredKey === key) return;
 
     shiftEndFiredKey = key;
@@ -1583,7 +1674,7 @@ body.menu-open {
     const endDate = dateAt(shift.end, 0);
     maybeFireShiftEndAlarm(now, shift, endDate);
 
-    shiftTitleEl.textContent = "勤務" + shift.number + "・" + (dayEl.value === "holiday" ? "休日" : "平日");
+    shiftTitleEl.textContent = "勤務" + shift.number + "・" + (activeDayType() === "holiday" ? "休日" : "平日");
     shiftHoursEl.textContent = shift.start + " → " + shift.end;
     shiftNoteEl.textContent = "終了 " + shift.end + " に現在の音色・音量設定で鳴動します。";
 
@@ -1608,6 +1699,7 @@ body.menu-open {
 
   function updateClock() {
     const now = new Date();
+    ensureAutoCalendarDate();
     updateShiftCountdown(now);
     const next = findNext(now);
     if (!next) {
@@ -1624,7 +1716,7 @@ body.menu-open {
         const eventDate = dateAt(item[0], 0);
         const target = alarmAt(eventDate);
         const delta = now.getTime() - target.getTime();
-        const dateKey = target.toISOString() + "|" + dayEl.value + "|" + (allMode ? "ALL" : currentDuty);
+        const dateKey = target.toISOString() + "|" + activeDayType() + "|" + (allMode ? "ALL" : currentDuty);
         if (delta >= 0 && delta < 2000 && firedKey !== dateKey) {
           firedKey = dateKey;
           beep();
@@ -1715,11 +1807,13 @@ body.menu-open {
   }
 
   dayEl.addEventListener("change", () => {
-    localStorage.setItem("funamachi-alarm-day", dayEl.value);
+    localStorage.setItem(DAY_MODE_KEY, dayEl.value);
+    if (dayEl.value === "auto") applyAutoCalendar();
     populateDuties();
     firedKey = "";
     renderList();
     updateClock();
+    if (dayEl.value === "auto") refreshHolidayCalendar();
   });
   [leadMinutesEl, leadSecondsEl].forEach((input) => {
     input.addEventListener("change", () => {
@@ -1757,7 +1851,10 @@ body.menu-open {
   });
 
 
+  loadCachedHolidayCalendar();
+  applyAutoCalendar();
   populateDuties();
+  refreshHolidayCalendar();
   syncLeadUi();
   syncAudioSelects();
   prepareAudio();
