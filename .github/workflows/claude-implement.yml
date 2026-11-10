@@ -34,7 +34,7 @@ jobs:
           fetch-depth: 1
 
       - name: Run Claude Code Action
-        uses: anthropics/claude-code-action@v1
+        uses: anthropics/claude-code-action@4fa93a88de49bbef68b10eb15aabedf28ca0e1ed # v1
         with:
           # サブスク認証（claude-action-sandbox で動作確認済み）。
           # Secret CLAUDE_CODE_OAUTH_TOKEN は本人が登録する。
