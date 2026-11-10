@@ -30,11 +30,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Run Claude Code Action
-        uses: anthropics/claude-code-action@ef8bb1e43bf303cff727a1dd0b8837029fe982a2
+        uses: anthropics/claude-code-action@v1
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # サブスク認証（claude-action-sandbox で動作確認済み）。
+          # Secret CLAUDE_CODE_OAUTH_TOKEN は本人が登録する。
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           label_trigger: 'status:doing'
           base_branch: ${{ github.event.repository.default_branch }}
           branch_prefix: 'claude/'
@@ -42,5 +46,6 @@ jobs:
           # action to agent mode, which does not create the Issue task branch.
           claude_args: |-
             --model sonnet
+            --max-turns 30
             --allowedTools "Read,Edit,Write,Glob,Grep,LS,WebFetch,WebSearch,Bash(git *),Bash(gh *),Bash(npm *),Bash(node *),Bash(python3 *)"
             --append-system-prompt "Before implementing, read the target Issue body and comments, AGENTS.md, DECISIONS.md, and RUNBOOK.md. GitHub Issues are the task SSOT. Follow 1 Issue = 1 Active Owner. Use the Claude Code Action-managed task branch; never commit or push to the repository default branch. Create a Pull Request for all changes. Run the required validation and smoke tests before submitting the PR. Follow the 3-strike rule and keep collector/config.py PERMISSION_GRANTED=False. External web access is read-only and limited to public pages needed for the Issue; do not access private APIs, bypass authentication, or perform mass scraping."
