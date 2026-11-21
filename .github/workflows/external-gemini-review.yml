@@ -1,0 +1,83 @@
+name: External Gemini repository review
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  review:
+    if: "${{ startsWith(github.event.issue.title, 'External Gemini review: ') }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Resolve target
+        id: target
+        env:
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+        run: |
+          TARGET="${ISSUE_TITLE#External Gemini review: }"
+          if ! [[ "$TARGET" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
+            echo "::error::Invalid repository"
+            exit 1
+          fi
+          echo "repository=$TARGET" >> "$GITHUB_OUTPUT"
+      - name: Checkout target repository
+        uses: actions/checkout@v7
+        with:
+          repository: ${{ steps.target.outputs.repository }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify Gemini API secret
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: test -n "$GEMINI_API_KEY"
+      - name: Run Gemini independent review
+        id: gemini
+        uses: google-github-actions/run-gemini-cli@f77273f4c914e4bf38440cf36a0369cb64a37489
+        env:
+          GEMINI_CLI_TRUST_WORKSPACE: "true"
+        with:
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          upload_artifacts: "false"
+          prompt: |-
+            You are Gemini acting as an independent production-readiness reviewer.
+            ANALYSIS ONLY. Do not modify files. Do not use external network or web search.
+            Review the checked-out repository's CURRENT default branch.
+            Inspect README/HANDOFF, source, data, CI workflows, affiliate/SEO/indexing scripts, and relevant styles/components.
+            Focus on:
+            - implementation correctness / regressions
+            - data integrity and stale-price risk
+            - mismatches between observed sale configurations and displayed specifications
+            - affiliate integration and disclosure
+            - SEO / sitemap / indexing / IndexNow
+            - CI security / permissions / supply chain
+            - accessibility / mobile UX
+            - maintainability / operational risks
+            Return ONLY this structure:
+            ## GEMINI REVIEW COMPLETE
+            ### HIGH
+            - findings with exact file evidence, or "None"
+            ### MEDIUM
+            - findings with exact file evidence, or "None"
+            ### LOW
+            - findings with exact file evidence, or "None"
+            ### VERDICT
+            concise production-readiness verdict
+      - name: Ensure review made no changes
+        run: |
+          if ! git diff --quiet || ! git diff --cached --quiet; then
+            echo "::error::Gemini review modified repository files"
+            git status --short
+            exit 1
+          fi
+      - name: Post review
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ steps.gemini.outputs.summary }}
+        run: |
+          printf '%s\n' "$RESULT" > /tmp/gemini-review.md
+          gh issue comment "${{ github.event.issue.number }}" --repo "$GITHUB_REPOSITORY" --body-file /tmp/gemini-review.md
